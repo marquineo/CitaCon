@@ -1,0 +1,240 @@
+openapi: 3.0.3
+info:
+  title: Sistema de Reservas de Entrenamientos de Gimnasio API
+  version: 1.0.0
+  description: >
+    API REST Laravel + Sanctum para 001-reservas-entrenamientos.
+    Plantilla semanal recurrente (slots por día+hora) + reservas por semana ISO.
+    Mapeo agnóstico→HTTP definido en http-mapping.md. OpenAPI opcional pero incluido.
+servers:
+  - url: http://localhost:8000
+    description: Local (Sanctum SPA)
+
+components:
+  securitySchemes:
+    sanctum:
+      type: apiKey
+      in: cookie
+      name: XSRF-TOKEN
+  schemas:
+    User:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string, format: email }
+        role: { type: string, enum: [cliente, administrador] }
+        weekly_hours: { type: integer, minimum: 0, default: 0 }
+    Slot:
+      type: object
+      properties:
+        id: { type: integer }
+        day_of_week: { type: integer, minimum: 1, maximum: 5, example: 1, description: "1=Lunes ... 5=Viernes" }
+        start_time: { type: string, pattern: "^([0-1][0-9]|2[0-1]):00:00$", example: "08:00:00" }
+        capacity: { type: integer, minimum: 1, default: 4 }
+        status: { type: string, enum: [abierta, bloqueada], default: abierta }
+        occupation: { type: integer, description: "Reservas confirmadas para week_start consultado" }
+    Reservation:
+      type: object
+      properties:
+        id: { type: integer }
+        user_id: { type: integer }
+        slot_id: { type: integer }
+        week_start: { type: string, format: date, example: "2026-09-07", description: "Lunes ISO de la semana" }
+        status: { type: string, enum: [confirmada, cancelada] }
+        created_at: { type: string, format: date-time }
+    Quota:
+      type: object
+      properties:
+        week_start: { type: string, format: date }
+        assigned: { type: integer }
+        used: { type: integer }
+        remaining: { type: integer }
+    Error:
+      type: object
+      properties:
+        message: { type: string }
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items: { type: string }
+
+security:
+  - sanctum: []
+
+paths:
+  /api/slots:
+    get:
+      summary: Listar franjas plantilla (con ocupación por semana)
+      parameters:
+        - name: week_start
+          in: query
+          required: false
+          schema: { type: string, format: date }
+          description: "Lunes ISO para calcular ocupación; sin él solo plantilla"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Slot' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      summary: Crear franja (solo admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [day_of_week, start_time]
+              properties:
+                day_of_week: { type: integer, minimum: 1, maximum: 5 }
+                start_time: { type: string, pattern: "^([0-1][0-9]|2[0-1]):00:00$" }
+                capacity: { type: integer, minimum: 1, default: 4 }
+      responses:
+        '201': { description: Creada, content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/Slot' } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /api/slots/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    put:
+      summary: Editar franja (aforo/horario, solo admin)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                day_of_week: { type: integer, minimum: 1, maximum: 5 }
+                start_time: { type: string }
+                capacity: { type: integer, minimum: 1 }
+      responses:
+        '200': { description: OK }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { description: Validación o aforo < reservas / duplicado, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    delete:
+      summary: Eliminar franja (solo admin)
+      responses:
+        '200': { description: OK }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/slots/{id}/block:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    patch:
+      summary: Bloquear franja (cascada, solo admin) — afecta a todas las semanas futuras
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string, enum: [bloqueada, abierta] }
+      responses:
+        '200': { description: Bloqueada con reservas canceladas, content: { application/json: { schema: { type: object, properties: { message: { type: string }, data: { $ref: '#/components/schemas/Slot' } } } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/slots/{id}/unblock:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    patch:
+      summary: Desbloquear franja (solo admin)
+      responses:
+        '200': { description: OK }
+
+  /api/reservations:
+    get:
+      summary: Listar reservas — cliente ve solo las suyas, admin puede filtrar por user_id
+      parameters:
+        - { name: user_id, in: query, required: false, schema: { type: integer } }
+        - { name: week_start, in: query, required: false, schema: { type: string, format: date } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/Reservation' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      summary: Crear reserva (cliente para sí, admin para cualquier user_id)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [slot_id, week_start]
+              properties:
+                slot_id: { type: integer }
+                week_start: { type: string, format: date, example: "2026-09-07" }
+                user_id: { type: integer, description: "Solo admin puede especificar otro usuario" }
+      responses:
+        '201': { description: Creada }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { description: Franja completa o bloqueada, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '422': { description: Límite semanal / 0h / franja pasada, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  /api/reservations/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    get:
+      summary: Detalle reserva (aislamiento: ajena → 404)
+      responses:
+        '200': { description: OK }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      summary: Cancelar reserva (propietario antes de inicio, o admin siempre)
+      responses:
+        '200': { description: Cancelada }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { description: Franja ya pasada }
+
+  /api/users/{id}/weekly-hours:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    patch:
+      summary: Asignar/modificar horas semanales (solo admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [weekly_hours]
+              properties:
+                weekly_hours: { type: integer, minimum: 0 }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/User' } } } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /api/users/me/quota:
+    get:
+      summary: Cupo semanal del autenticado
+      parameters:
+        - { name: week_start, in: query, required: false, schema: { type: string, format: date } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/Quota' } } } } } }
+
+components:
+  responses:
+    Unauthorized:
+      description: No autenticado (Sanctum)
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    Forbidden:
+      description: Sin permisos (RBAC)
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    NotFound:
+      description: No encontrado o sin acceso (aislamiento indistinguible)
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    Unprocessable:
+      description: Validación / regla de negocio
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
