@@ -1,0 +1,55 @@
+# PHP / Laravel
+/vendor/
+.env
+.env.backup
+.env.production
+.env.testing
+backend/.env.testing
+.phpunit.result.cache
+Homestead.json
+Homestead.yaml
+auth.json
+npm-debug.log
+yarn-error.log
+*.log
+*.cache
+
+# Node / Angular
+/node_modules/
+/frontend/node_modules/
+/frontend/dist/
+/frontend/build/
+/frontend/.angular/
+dist/
+build/
+*.log
+
+# MySQL / Docker
+/docker/mysql/data/
+
+# Universal
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.vscode/
+.idea/
+*.env
+.env.local
+.env.development.local
+.env.test.local
+
+# Tool specific
+coverage/
+.nyc_output/
+junit.xml
+
+# Laravel storage & cache
+/backend/storage/logs/
+/backend/storage/framework/cache/
+/backend/storage/framework/sessions/
+/backend/storage/framework/views/
+/backend/bootstrap/cache/
+
+# Frontend
+frontend/.angular/cache/

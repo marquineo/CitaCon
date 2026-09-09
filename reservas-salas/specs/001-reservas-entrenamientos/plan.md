@@ -10,7 +10,7 @@ Sistema de reservas para gimnasio con franjas de 1h (L-V 7:00-22:00, plantilla s
 
 ## Technical Context
 
-**Language/Version**: PHP 8.2 + Laravel 11 (backend), TypeScript 5 + Angular 17+ (frontend), MySQL 8.0
+**Language/Version**: PHP 8.4 + Laravel 11 (compatible desde 8.2, entorno real del desarrollador en 8.4.25 vía Laravel Herd) (backend), TypeScript 5 + Angular 17+ (frontend), MySQL 8.0
 
 **Primary Dependencies**: Laravel Sanctum (SPA cookie/CSRF), Eloquent ORM, Laravel Policies/Gates + middleware `auth:sanctum`, Angular `HttpClient` + `Router` + guards, `date-fns` o equivalente para semana ISO
 
