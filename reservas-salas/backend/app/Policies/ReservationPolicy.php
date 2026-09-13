@@ -30,9 +30,4 @@ class ReservationPolicy
     {
         return $user->id === $reservation->user_id || $user->isAdmin();
     }
-
-    public function update(User $user, Reservation $reservation): bool
-    {
-        return $user->isAdmin();
-    }
 }

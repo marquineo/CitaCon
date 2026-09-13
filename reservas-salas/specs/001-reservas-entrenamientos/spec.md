@@ -17,6 +17,10 @@
 - Q: ¿Se requiere registro de auditoría/historial de cancelaciones y bloqueos? → A: No en esta iteración. Registro de auditoría/historial de cancelaciones y bloqueos — pospuesto a segunda iteración. Esta iteración usa hard delete al cancelar, sin trazabilidad persistida más allá de los logs estándar de la aplicación.
 - Q: ¿El administrador debe respetar aforo y cupo al crear reservas para clientes? → A: No. El administrador, al crear o gestionar una reserva en nombre de un cliente, MUST poder saltarse tanto la restricción de propiedad como las validaciones de aforo máximo de la franja y de cupo semanal del cliente — excepción deliberada del rol admin, no un bug. Solo clientes están sujetos a esas validaciones.
 
+### Session 2026-09-13
+
+- Q: ¿Cómo se completa el CRUD de usuarios que había quedado incompleto? → A: Se añaden FR-018 (admin crea cliente con nombre, email, weekly_hours), FR-019 (admin elimina cliente con cascada hard DELETE de todas sus reservas sin auditoría) y FR-020 (cliente no puede crear ni eliminar usuarios). Se amplían escenarios de User Story 5 y Key Entities para reflejar creación/eliminación y cascada.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Cliente reserva una franja disponible (Priority: P1)
@@ -103,6 +107,9 @@ Como administrador, quiero ajustar el aforo máximo por franja y asignar/modific
 3. **Given** cualquier cliente, **When** admin asigna/modifica sus horas semanales (ej. de 2h a 5h o a 0h), **Then** el nuevo límite aplica inmediatamente para validaciones futuras; el cómputo semanal se recalcula (usadas vs. restantes).
 4. **Given** administrador, **When** lista reservas de cualquier cliente o crea/cancela una reserva en nombre de un cliente, **Then** la operación tiene éxito (sin restricción de propiedad y sin validar aforo máximo ni cupo semanal — excepción admin) y ajusta cupo del cliente afectado y ocupación de franja correspondientemente.
 5. **Given** cliente intenta modificar horas semanales o aforo, **When** envía la petición, **Then** el sistema rechaza la operación indicando que no tiene permisos (solo administrador).
+6. **Given** administrador autenticado, **When** crea un nuevo cliente con nombre, email y weekly_hours iniciales (ej. 2h), **Then** el sistema crea el cliente (201) y aparece en el listado de clientes con esos datos.
+7. **Given** cliente existente con reservas pasadas y futuras, **When** administrador lo elimina, **Then** el sistema elimina el cliente y todas sus reservas asociadas (pasadas y futuras) en cascada (hard DELETE), sin dejar reservas huérfanas y sin registro de auditoría.
+8. **Given** cliente autenticado intenta crear un usuario o eliminar cualquier usuario (incluso su propia cuenta), **When** envía la petición, **Then** el sistema rechaza con 403 — solo administrador puede crear/eliminar usuarios.
 
 ---
 
@@ -140,10 +147,13 @@ Como administrador, quiero ajustar el aforo máximo por franja y asignar/modific
 - **FR-015**: Un cliente con 0h semanales asignadas MUST ser rechazado al intentar cualquier reserva, con el mismo mensaje de límite semanal.
 - **FR-016**: El sistema MUST exponer para cada franja su día, hora de inicio (y fin implícito +1h), estado (abierta/bloqueada), aforo máximo y ocupación actual; y para cada cliente su cupo semanal (asignado, usado, restante) de la semana consultada.
 - **FR-017**: Toda regla de negocio anterior MUST estar cubierta por al menos un test automatizado antes de considerarse completa (principio de constitución).
+- **FR-018**: El administrador MUST poder crear un nuevo cliente, proporcionando nombre, email, password (obligatorio, mínimo 8 caracteres) y horas semanales iniciales (puede ser 0). El email MUST ser único y el password es obligatorio (422 si falta o es demasiado corto).
+- **FR-019**: El administrador MUST poder eliminar un cliente existente. Al eliminar un cliente, todas sus reservas (pasadas y futuras) MUST eliminarse en cascada (hard DELETE), sin registro de auditoría (consistente con hard delete sin trazabilidad en esta iteración).
+- **FR-020**: Un cliente MUST NOT poder crear ni eliminar usuarios, ni siquiera su propia cuenta — estas acciones son exclusivas del administrador (403 si lo intenta).
 
 ### Key Entities
 
-- **Usuario**: Persona autenticada. Atributos: identificador, nombre/email, rol (cliente | administrador), horas semanales asignadas (entero >=0, por defecto 0). Relación: posee múltiples reservas propias; su cupo semanal se calcula por semana.
+- **Usuario**: Persona autenticada. Atributos: identificador, nombre/email, password (hash, obligatorio en creación, mínimo 8 caracteres), rol (cliente | administrador), horas semanales asignadas (entero >=0, por defecto 0). Relación: posee múltiples reservas propias; su cupo semanal se calcula por semana. Ciclo de vida: solo el administrador puede crear (FR-018, con email único y password obligatorio) y eliminar (FR-019, con cascada hard DELETE de todas sus reservas, sin auditoría); los clientes no pueden crear ni eliminar usuarios (FR-020, 403).
 - **Franja Horaria (Slot)**: Plantilla semanal recurrente reutilizada cada semana, identificada de forma única por (día de semana, hora de inicio). Representa un intervalo reservable de 1h entre L-V 7:00-22:00 (hora inicio 7:00..21:00). Atributos: día (L-V), hora inicio, estado (abierta/bloqueada — el bloqueo afecta a todas las semanas futuras), aforo máximo (por defecto 4), ocupación actual por semana (reservas confirmadas en esa semana). Las reservas se asocian a la franja + semana concreta (año-semana ISO). No duplicable. Bloquear/desbloquear solo una semana puntual queda fuera de alcance en esta iteración.
 - **Reserva**: Asociación entre un cliente y una franja en una semana concreta. Atributos: cliente, franja, semana (año-semana ISO), estado (confirmada/cancelada), timestamp de creación. Reglas: una reserva consume 1h del cupo semanal del cliente en esa semana y 1 plaza del aforo de la franja en esa semana; al cancelarse/bloquearse se libera ambos.
 - **Cupo Semanal**: Concepto derivado (no entidad persistida independiente). Cálculo por cliente y semana: `restante = horas_asignadas - reservas_confirmadas_en_semana`. No acumulable entre semanas.

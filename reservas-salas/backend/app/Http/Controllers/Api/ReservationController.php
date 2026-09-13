@@ -4,18 +4,40 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ReservationRequest;
+use App\Models\Reservation;
 use App\Services\ReservationService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Carbon\Carbon;
 
 class ReservationController extends Controller
 {
+    use AuthorizesRequests;
+
     public function __construct(private ReservationService $service) {}
 
-    public function index()
+    public function index(Request $request): JsonResponse
     {
-        return response()->json(['data' => []]);
+        $user = $request->user();
+        // Cliente solo ve suyas; admin puede filtrar por ?user_id
+        $query = Reservation::query();
+        if ($user->role !== 'administrador') {
+            $query->where('user_id', $user->id);
+        } elseif ($request->filled('user_id')) {
+            $query->where('user_id', (int) $request->input('user_id'));
+        } else {
+            // Admin sin filtro user_id ve todas las reservas de todos los clientes (decisión confirmada).
+        }
+
+        if ($request->filled('week_start')) {
+            $query->where('week_start', $request->input('week_start'));
+        }
+
+        return response()->json(['data' => $query->get()]);
     }
 
     public function store(ReservationRequest $request): JsonResponse
@@ -23,19 +45,15 @@ class ReservationController extends Controller
         $authUser = $request->user();
         $isAdmin = $authUser->role === 'administrador';
 
-        // Validación de user_id ya hecha en ReservationRequest (exists), pero restricción "solo admin" vive aquí
         $targetUserId = null;
         if ($request->filled('user_id')) {
             if (!$isAdmin) {
-                // Cliente intenta suplantar: ignorar silenciosamente, usar su propio id
                 $targetUserId = null;
             } else {
                 $targetUserId = (int) $request->input('user_id');
             }
         }
 
-        // Si es cliente, forzar auth id; si es admin sin user_id, también usa su propio id (crea para sí)
-        // La lógica de efectivo ya está en el servicio, pero aquí documentamos la intención
         try {
             $reservation = $this->service->create(
                 slotId: (int) $request->input('slot_id'),
@@ -44,24 +62,52 @@ class ReservationController extends Controller
                 targetUserId: $targetUserId
             );
         } catch (HttpException $e) {
-            // 409 franja completa / bloqueada
             return response()->json(['message' => $e->getMessage()], $e->getStatusCode());
         } catch (ValidationException $e) {
-            // 422 cupo semanal / 0h / semana pasada
-            // Mantener formato ValidationException con errors
             throw $e;
         }
 
         return response()->json(['data' => $reservation], 201);
     }
 
-    public function show()
+    public function show(Request $request, Reservation $reservation): JsonResponse
     {
-        return response()->json(['data' => null]);
+        try {
+            $this->authorize('view', $reservation);
+        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+            // Un único lugar para la regla: ReservationPolicy::view — 404 indistinguible para no filtrar existencia
+            return response()->json(['message' => 'No encontrado.'], 404);
+        }
+
+        return response()->json(['data' => $reservation]);
     }
 
-    public function destroy()
+    public function destroy(Request $request, Reservation $reservation): JsonResponse
     {
-        return response()->json(['message' => 'stub']);
+        $user = $request->user();
+
+        // Verificar Policy::delete (propietario o admin) — pero devolver 404 indistinguible para no filtrar existencia (FR-008)
+        if ($user->cannot('delete', $reservation)) {
+            return response()->json(['message' => 'No encontrado.'], 404);
+        }
+
+        // Validar que la franja no haya pasado: week_start + slot.start_time > now()
+        $reservation->loadMissing('slot');
+        $slot = $reservation->slot;
+        if ($slot) {
+            $slotDateTime = Carbon::parse($reservation->week_start->format('Y-m-d') . ' ' . $slot->start_time, 'Europe/Madrid');
+            if ($slotDateTime->isPast()) {
+                throw ValidationException::withMessages([
+                    'week_start' => ['No se puede cancelar una franja ya iniciada/pasada.'],
+                ]);
+            }
+        }
+
+        // Hard DELETE en transacción, sin lockForUpdate (no protege recurso compartido limitado)
+        DB::transaction(function () use ($reservation) {
+            $reservation->delete();
+        });
+
+        return response()->json(['message' => 'Reserva cancelada.'], 200);
     }
 }

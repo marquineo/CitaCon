@@ -15,7 +15,7 @@ class SlotRequest extends FormRequest
     {
         return [
             'day_of_week' => ['required', 'integer', 'between:1,5'],
-            'start_time' => ['required', 'regex:/^([0-9]|1[0-9]|2[0-1]):00:00$/', 'date_format:H:i:s'],
+            'start_time' => ['required', 'regex:/^(0?[7-9]|1[0-9]|2[0-1]):00:00$/', 'date_format:H:i:s'],
             'capacity' => ['sometimes', 'integer', 'min:1', 'max:50'],
             'status' => ['sometimes', 'in:abierta,bloqueada'],
         ];

@@ -36,4 +36,8 @@ export class SlotService {
   unblock(id: number): Observable<{ message: string; data: Slot }> {
     return this.http.patch<{ message: string; data: Slot }>(`/api/slots/${id}/unblock`, {});
   }
+
+  delete(id: number): Observable<{ message: string }> {
+    return this.http.delete<{ message: string }>(`/api/slots/${id}`);
+  }
 }

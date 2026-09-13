@@ -3,41 +3,106 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\SlotRequest;
+use App\Models\Slot;
+use App\Services\SlotService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Database\QueryException;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Carbon\Carbon;
 
 class SlotController extends Controller
 {
-    public function index()
+    use AuthorizesRequests;
+
+    public function __construct(private SlotService $service) {}
+
+    public function index(Request $request): JsonResponse
     {
-        return response()->json(['data' => []]);
+        $query = Slot::query();
+
+        if ($request->filled('week_start')) {
+            $weekStart = $request->input('week_start');
+            // Añadir ocupación por semana si se pide
+            $slots = $query->get()->map(function (Slot $slot) use ($weekStart) {
+                $slot->occupation = $slot->reservations()->where('week_start', $weekStart)->count();
+                return $slot;
+            });
+            return response()->json(['data' => $slots]);
+        }
+
+        return response()->json(['data' => $query->get()]);
     }
 
-    public function show()
+    public function show(Slot $slot): JsonResponse
     {
-        return response()->json(['data' => null]);
+        return response()->json(['data' => $slot]);
     }
 
-    public function store()
+    public function store(SlotRequest $request): JsonResponse
     {
-        return response()->json(['data' => null], 201);
+        $this->authorize('create', Slot::class);
+
+        try {
+            $slot = Slot::create($request->validated());
+        } catch (QueryException $e) {
+            if ($this->isDuplicateException($e)) {
+                return response()->json(['message' => 'Ya existe una franja para ' . $this->formatSlot($request)], 422);
+            }
+            throw $e;
+        }
+
+        return response()->json(['data' => $slot], 201);
     }
 
-    public function update()
+    public function update(SlotRequest $request, Slot $slot): JsonResponse
     {
-        return response()->json(['data' => null]);
+        $this->authorize('update', $slot);
+
+        try {
+            $updated = $this->service->update($slot, $request->validated());
+        } catch (QueryException $e) {
+            if ($this->isDuplicateException($e)) {
+                return response()->json(['message' => 'Ya existe una franja para ' . $this->formatSlot($request)], 422);
+            }
+            throw $e;
+        }
+
+        return response()->json(['data' => $updated], 200);
     }
 
-    public function destroy()
+    public function destroy(Request $request, Slot $slot): JsonResponse
     {
-        return response()->json(['message' => 'stub']);
+        $this->authorize('delete', $slot);
+        $slot->delete();
+        return response()->json(['message' => 'Franja eliminada.'], 200);
     }
 
-    public function block()
+    public function block(Request $request, Slot $slot): JsonResponse
     {
-        return response()->json(['message' => 'stub']);
+        $this->authorize('block', $slot);
+        $blocked = $this->service->block($slot);
+        return response()->json(['message' => 'Franja bloqueada.', 'data' => $blocked], 200);
     }
 
-    public function unblock()
+    public function unblock(Request $request, Slot $slot): JsonResponse
     {
-        return response()->json(['message' => 'stub']);
+        $this->authorize('block', $slot);
+        $unblocked = $this->service->unblock($slot);
+        return response()->json(['message' => 'Franja desbloqueada.', 'data' => $unblocked], 200);
+    }
+
+    private function isDuplicateException(QueryException $e): bool
+    {
+        return str_contains($e->getMessage(), 'slots_day_time_unique') || $e->getCode() === '23000';
+    }
+
+    private function formatSlot($request): string
+    {
+        $days = [1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles', 4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado', 7 => 'Domingo'];
+        $day = $days[$request->input('day_of_week')] ?? $request->input('day_of_week');
+        $time = $request->input('start_time');
+        return "$day $time";
     }
 }
