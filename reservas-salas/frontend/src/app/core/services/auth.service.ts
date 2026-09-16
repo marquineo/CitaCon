@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, tap } from 'rxjs';
+import { Observable, switchMap, map } from 'rxjs';
 
 export interface User {
   id: number;
@@ -10,23 +10,25 @@ export interface User {
   weekly_hours: number;
 }
 
+export interface AuthUser {
+  id: number;
+  name: string;
+  email: string;
+  role: 'cliente' | 'administrador';
+}
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private apiUrl = '';
-
   constructor(private http: HttpClient) {}
 
   csrfCookie(): Observable<void> {
     return this.http.get<void>('/sanctum/csrf-cookie');
   }
 
-  login(email: string, password: string): Observable<{ user: User }> {
-    // Sanctum SPA: primero csrf, luego POST /api/login
+  login(email: string, password: string): Observable<{ data: AuthUser }> {
     return this.csrfCookie().pipe(
-      // switchMap would be here; simplified
-      tap(() => {})
-    ) as any;
-    // Real impl: return this.http.post<{user: User}>('/api/login', {email, password});
+      switchMap(() => this.http.post<{ data: AuthUser }>('/api/login', { email, password }))
+    );
   }
 
   logout(): Observable<void> {
@@ -34,6 +36,8 @@ export class AuthService {
   }
 
   me(): Observable<User> {
-    return this.http.get<User>('/api/user');
+    return this.http.get<{ data: User }>('/api/user').pipe(
+      map(res => res.data)
+    );
   }
 }
