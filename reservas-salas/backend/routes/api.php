@@ -10,6 +10,7 @@ Route::post('/login', [AuthController::class, 'login'])->middleware('web');
 Route::post('/logout', [AuthController::class, 'logout'])->middleware(['web', 'auth:sanctum']);
 
 Route::middleware(['web', 'auth:sanctum'])->group(function () {
+    Route::get('/user', [UserController::class, 'me']);
     Route::get('/slots', [SlotController::class, 'index']);
     Route::get('/slots/{slot}', [SlotController::class, 'show']);
     Route::post('/slots', [SlotController::class, 'store']);

@@ -19,6 +19,20 @@ class UserController extends Controller
      * No existía tarea explícita en tasks.md para GET /api/users (hueco detectado).
      * Se implementa como endpoint mínimo para que admin-quota pueda listar clientes.
      */
+    public function me(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        return response()->json([
+            'data' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+                'weekly_hours' => $user->weekly_hours,
+            ]
+        ]);
+    }
+
     public function index(Request $request): JsonResponse
     {
         $this->authorize('viewAny', User::class);
