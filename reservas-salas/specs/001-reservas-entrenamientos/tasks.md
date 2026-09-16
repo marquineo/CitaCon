@@ -164,7 +164,7 @@
 - [ ] T046 [P] Documentar y verificar `hard DELETE` vs auditorÃ­a pospuesta en `specs/001-reservas-entrenamientos/spec.md` Out of Scope y `data-model.md` (ya hecho, verificar consistencia)
 - [ ] T047 Revisar isolation + RBAC global en `backend/app/Policies/` â€” auditorÃ­a manual de que ningÃºn endpoint filtra sin `auth.id` o Policy (ConstituciÃ³n I & III)
 - [ ] T048 Ejecutar validaciÃ³n completa con `quickstart.md` â€” 11 escenarios end-to-end con curl/Postman, verificar 201/409/422/403/404/401 segÃºn `contracts/http-mapping.md` en `specs/001-reservas-entrenamientos/quickstart.md`
-- [ ] T049 [P] AÃ±adir tests unit adicionales en `backend/tests/Unit/` para `Slot.php` y `Reservation.php` (validaciones de enum y UNIQUE)
+- [X] T049 [P] AÃ±adir tests unit adicionales en `backend/tests/Unit/` para `Slot.php` y `Reservation.php` (validaciones de enum y UNIQUE)
 - [ ] T050 Optimizar frontend tipado en `frontend/src/app/core/services/` â€” asegurar contratos tipados y manejo de errores sin exponer internals (ConstituciÃ³n restricciÃ³n Angular)
 - [ ] T051 Ejecutar `php artisan test` completo y `npm test` en `frontend/` â€” asegurar 100% de FRs con â‰¥1 test (ConstituciÃ³n II, FR-017)
 
@@ -259,6 +259,7 @@ Cada US se integra sin romper anteriores (hard DELETE + UNIQUE + lockForUpdate g
 - Parar en cualquier checkpoint para validar historia independiente
 - Evitar: tareas vagas, conflictos en mismo archivo, dependencias cruzadas que rompan independencia
 - Total: 51 tareas (incluye tests TDD). MVP = T001-T021 (21 tareas).
+
 
 
 
