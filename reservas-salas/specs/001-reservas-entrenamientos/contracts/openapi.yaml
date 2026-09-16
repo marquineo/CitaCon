@@ -25,6 +25,13 @@ components:
         email: { type: string, format: email }
         role: { type: string, enum: [cliente, administrador] }
         weekly_hours: { type: integer, minimum: 0, default: 0 }
+    AuthUser:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string, format: email }
+        role: { type: string, enum: [cliente, administrador] }
     Slot:
       type: object
       properties:
@@ -41,7 +48,7 @@ components:
         user_id: { type: integer }
         slot_id: { type: integer }
         week_start: { type: string, format: date, example: "2026-09-07", description: "Lunes ISO de la semana" }
-        status: { type: string, enum: [confirmada, cancelada] }
+        status: { type: string, enum: [confirmada] }
         created_at: { type: string, format: date-time }
     Quota:
       type: object
@@ -59,11 +66,94 @@ components:
           additionalProperties:
             type: array
             items: { type: string }
+  responses:
+    Unauthorized:
+      description: No autenticado (Sanctum)
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    Forbidden:
+      description: Sin permisos (RBAC)
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    NotFound:
+      description: No encontrado o sin acceso (aislamiento indistinguible)
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    Unprocessable:
+      description: Validación / regla de negocio
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
 
 security:
   - sanctum: []
 
 paths:
+  /api/login:
+    post:
+      summary: Login (Sanctum SPA, sesión/cookie)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 1 }
+      responses:
+        '200': { description: Autenticado, content: { application/json: { schema: { type: object, properties: { message: { type: string }, data: { $ref: '#/components/schemas/AuthUser' } } } } } }
+        '401': { description: Credenciales incorrectas, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /api/logout:
+    post:
+      summary: Logout (invalida sesión)
+      responses:
+        '200': { description: Sesión cerrada }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/user:
+    get:
+      summary: Usuario autenticado (perfil)
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/User' } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/users:
+    get:
+      summary: Listar clientes (solo admin)
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/User' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      summary: Crear cliente (solo admin, password obligatorio min 8)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password, weekly_hours]
+              properties:
+                name: { type: string, maxLength: 255 }
+                email: { type: string, format: email, maxLength: 255 }
+                password: { type: string, minLength: 8 }
+                weekly_hours: { type: integer, minimum: 0, maximum: 50 }
+      responses:
+        '201': { description: Creado, content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/User' } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /api/users/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    delete:
+      summary: Eliminar cliente (solo admin, cascada hard DELETE reservas)
+      responses:
+        '200': { description: Usuario eliminado }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
   /api/slots:
     get:
       summary: Listar franjas plantilla (con ocupación por semana)
@@ -178,13 +268,13 @@ paths:
         '201': { description: Creada }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '409': { description: Franja completa o bloqueada, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
-        '422': { description: Límite semanal / 0h / franja pasada, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '422': { description: Límite semanal / 0h / franja pasada / duplicado, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
 
   /api/reservations/{id}:
     parameters:
       - { name: id, in: path, required: true, schema: { type: integer } }
     get:
-      summary: Detalle reserva (aislamiento: ajena → 404)
+      summary: "Detalle reserva (aislamiento: ajena -> 404)"
       responses:
         '200': { description: OK }
         '401': { $ref: '#/components/responses/Unauthorized' }
@@ -223,18 +313,3 @@ paths:
         - { name: week_start, in: query, required: false, schema: { type: string, format: date } }
       responses:
         '200': { description: OK, content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/Quota' } } } } } }
-
-components:
-  responses:
-    Unauthorized:
-      description: No autenticado (Sanctum)
-      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
-    Forbidden:
-      description: Sin permisos (RBAC)
-      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
-    NotFound:
-      description: No encontrado o sin acceso (aislamiento indistinguible)
-      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
-    Unprocessable:
-      description: Validación / regla de negocio
-      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
