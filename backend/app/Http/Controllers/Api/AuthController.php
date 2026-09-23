@@ -6,9 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
@@ -25,12 +23,11 @@ class AuthController extends Controller
             return response()->json(['message' => 'Credenciales incorrectas.'], 401);
         }
 
-        // Sanctum SPA usa sesión web (cookies), no tokens Bearer
-        Auth::guard('web')->login($user);
-        $request->session()->regenerate();
+        $token = $user->createToken('spa-token')->plainTextToken;
 
         return response()->json([
             'message' => 'Autenticado.',
+            'token' => $token,
             'data' => [
                 'id' => $user->id,
                 'name' => $user->name,
@@ -42,10 +39,8 @@ class AuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
-        Auth::guard('web')->logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        $request->user()->currentAccessToken()->delete();
 
-        return response()->json(['message' => 'Sesión cerrada.'], 200)->withCookie(cookie()->forget('laravel_session'));
+        return response()->json(['message' => 'Sesión cerrada.'], 200);
     }
 }

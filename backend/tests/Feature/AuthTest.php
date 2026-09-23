@@ -22,19 +22,24 @@ class AuthTest extends TestCase
         ]);
     }
 
-    public function test_login_valido_devuelve_200_y_sesion_funciona(): void
+    public function test_login_valido_devuelve_200_con_token_y_datos_usuario(): void
     {
-        $user = $this->createUser('valid@test.test', 'secret123', 'cliente', 3);
+        $this->createUser('valid@test.test', 'secret123', 'cliente', 3);
 
-        $login = $this->postJson('/api/login', [
+        $response = $this->postJson('/api/login', [
             'email' => 'valid@test.test',
             'password' => 'secret123',
         ]);
 
-        $login->assertStatus(200);
-        $me = $this->getJson('/api/users/me/quota');
-        $me->assertStatus(200);
-        $me->assertJsonStructure(['data' => ['assigned', 'used', 'remaining']]);
+        $response->assertStatus(200);
+        $response->assertJsonStructure([
+            'token',
+            'data' => ['id', 'name', 'email', 'role'],
+        ]);
+        $this->assertNotEmpty($response->json('token'));
+        $this->assertIsString($response->json('token'));
+        $response->assertJsonPath('data.email', 'valid@test.test');
+        $response->assertJsonPath('data.role', 'cliente');
     }
 
     public function test_login_credenciales_incorrectas_devuelve_401(): void
@@ -48,38 +53,62 @@ class AuthTest extends TestCase
 
         $response->assertStatus(401);
         $response->assertJson(['message' => 'Credenciales incorrectas.']);
-
-        $me = $this->getJson('/api/users/me/quota');
-        $me->assertStatus(401);
     }
 
-    public function test_logout_invalida_sesion_y_posteriores_devuelven_401(): void
+    public function test_ruta_protegida_sin_token_devuelve_401(): void
     {
-        $user = $this->createUser('logout@test.test', 'secret123', 'cliente', 3);
+        $response = $this->getJson('/api/user');
 
-        // 1. Login (200)
+        $response->assertStatus(401);
+    }
+
+    public function test_ruta_protegida_con_bearer_token_valido_devuelve_200(): void
+    {
+        $this->createUser('bearer@test.test', 'secret123', 'cliente', 3);
+
+        $login = $this->postJson('/api/login', [
+            'email' => 'bearer@test.test',
+            'password' => 'secret123',
+        ]);
+        $login->assertStatus(200);
+        $token = $login->json('token');
+        $this->assertNotEmpty($token);
+
+        $response = $this->withHeader('Authorization', 'Bearer ' . $token)->getJson('/api/user');
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('data.email', 'bearer@test.test');
+    }
+
+    public function test_logout_revoca_token_y_posterior_uso_devuelve_401(): void
+    {
+        $this->createUser('logout@test.test', 'secret123', 'cliente', 3);
+
         $login = $this->postJson('/api/login', [
             'email' => 'logout@test.test',
             'password' => 'secret123',
         ]);
         $login->assertStatus(200);
+        $token = $login->json('token');
+        $this->assertNotEmpty($token);
 
-        // 2. Verificar sesión activa: petición a endpoint protegido (200) + assertAuthenticated
-        $before = $this->getJson('/api/users/me/quota');
+        // Verificar token válido antes de logout
+        $before = $this->withHeader('Authorization', 'Bearer ' . $token)->getJson('/api/user');
         $before->assertStatus(200);
-        $this->assertAuthenticated('web');
 
-        // 3. Logout (200) + assertGuest — aserción real de que la sesión se invalidó
-        $logout = $this->postJson('/api/logout');
+        $this->app['auth']->forgetGuards();
+
+        // Logout revoca token actual
+        $logout = $this->withHeader('Authorization', 'Bearer ' . $token)->postJson('/api/logout');
         $logout->assertStatus(200);
-        $this->assertGuest('web');
 
-        // La invalidación completa de sesión (incluyendo que peticiones HTTP posteriores
-        // reales devuelvan 401) se verificó manualmente con curl/Invoke-WebRequest contra
-        // el servidor real — ver notas de la sesión de Polish del 2026-09-13. El entorno
-        // de test de Laravel no reproduce de forma fiable el ciclo de cookies entre
-        // peticiones para este caso, por lo que assertGuest('web') es la aserción
-        // automatizada fiable aquí.
+        // Limpiar estado de autenticación en memoria entre peticiones dentro del mismo test
+        // (en producción cada HTTP es un proceso aislado; en tests el contenedor reutiliza la guard)
+        $this->app['auth']->forgetGuards();
+
+        // Posterior uso del mismo token debe dar 401
+        $after = $this->withHeader('Authorization', 'Bearer ' . $token)->getJson('/api/user');
+        $after->assertStatus(401);
     }
 
     public function test_login_valida_email_y_password_requeridos(): void

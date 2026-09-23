@@ -6,10 +6,10 @@ use App\Http\Controllers\Api\ReservationController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\AuthController;
 
-Route::post('/login', [AuthController::class, 'login'])->middleware('web');
-Route::post('/logout', [AuthController::class, 'logout'])->middleware(['web', 'auth:sanctum']);
+Route::post('/login', [AuthController::class, 'login']);
+Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 
-Route::middleware(['web', 'auth:sanctum'])->group(function () {
+Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [UserController::class, 'me']);
     Route::get('/slots', [SlotController::class, 'index']);
     Route::get('/slots/{slot}', [SlotController::class, 'show']);
