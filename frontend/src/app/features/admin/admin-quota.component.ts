@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../environments/environment';
 
 interface Client {
   id: number;
@@ -72,7 +73,7 @@ export class AdminQuotaComponent implements OnInit {
   loadClients(): void {
     this.loading = true;
     this.error = null;
-    this.http.get<{ data: Client[] }>('/api/users').subscribe({
+    this.http.get<{ data: Client[] }>(`${environment.apiUrl}/api/users`).subscribe({
       next: (res) => {
         this.clients = res.data.map(c => ({ ...c, _editValue: c.weekly_hours, _error: null, _saving: false }));
         this.loading = false;
@@ -91,7 +92,7 @@ export class AdminQuotaComponent implements OnInit {
     const value = client._editValue;
 
     // No validación propia en Angular — se envía tal cual y se muestra el error de la API si es 422
-    this.http.patch<{ data: Client }>(`/api/users/${client.id}/weekly-hours`, { weekly_hours: value }).subscribe({
+    this.http.patch<{ data: Client }>(`${environment.apiUrl}/api/users/${client.id}/weekly-hours`, { weekly_hours: value }).subscribe({
       next: (res) => {
         client.weekly_hours = res.data.weekly_hours;
         client._error = null;
