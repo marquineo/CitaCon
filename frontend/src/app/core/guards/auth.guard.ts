@@ -5,8 +5,14 @@ import { catchError, map, of } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 export const authGuard: CanActivateFn = () => {
-  const http = inject(HttpClient);
   const router = inject(Router);
+  const token = localStorage.getItem('citacon_token');
+  if (!token) {
+    router.navigate(['/login']);
+    return of(false);
+  }
+
+  const http = inject(HttpClient);
   return http.get(`${environment.apiUrl}/api/user`).pipe(
     map(() => true),
     catchError(() => {
@@ -17,8 +23,14 @@ export const authGuard: CanActivateFn = () => {
 };
 
 export const adminGuard: CanActivateFn = () => {
-  const http = inject(HttpClient);
   const router = inject(Router);
+  const token = localStorage.getItem('citacon_token');
+  if (!token) {
+    router.navigate(['/login']);
+    return of(false);
+  }
+
+  const http = inject(HttpClient);
   return http.get<any>(`${environment.apiUrl}/api/user`).pipe(
     map(user => {
       if (user.role === 'administrador') return true;
