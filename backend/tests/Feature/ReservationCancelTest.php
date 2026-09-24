@@ -137,4 +137,39 @@ class ReservationCancelTest extends TestCase
         $this->assertStringContainsString('No se puede cancelar', $payload);
         $this->assertDatabaseHas('reservations', ['id' => $reservation->id]);
     }
+
+    public function test_puede_cancelar_franja_de_dia_futuro_en_semana_actual_aunque_lunes_ya_paso(): void
+    {
+        // Fijar fecha a jueves 2026-09-17 12:00 Europe/Madrid para ser determinista
+        $testNow = Carbon::create(2026, 9, 17, 12, 0, 0, 'Europe/Madrid');
+        Carbon::setTestNow($testNow);
+        try {
+            $cliente = $this->makeUser('cancel-viernes@test.test', 'cliente', 3);
+            // Viernes (day_of_week=5) 18:00 — día futuro dentro de la semana actual
+            $slot = $this->makeSlot(5, '18:00:00');
+
+            // Lunes de la semana ACTUAL calculado dinámicamente (no hardcodeado)
+            $monday = Carbon::now('Europe/Madrid')->startOfWeek(Carbon::MONDAY)->toDateString();
+            $this->assertEquals('2026-09-14', $monday, 'Sanity: lunes de semana actual');
+
+            $reservation = Reservation::create([
+                'user_id' => $cliente->id,
+                'slot_id' => $slot->id,
+                'week_start' => $monday,
+                'status' => 'confirmada',
+            ]);
+
+            // Sanity: viernes 18:00 debe ser futuro respecto a jueves 12:00 con cálculo corregido
+            $fridayDateTime = Carbon::parse($monday, 'Europe/Madrid')->addDays($slot->day_of_week - 1)->setTimeFromTimeString($slot->start_time);
+            $this->assertFalse($fridayDateTime->isPast(), 'Sanity: viernes futuro no debe ser isPast()');
+
+            Sanctum::actingAs($cliente);
+
+            $resp = $this->deleteJson("/api/reservations/{$reservation->id}");
+            $resp->assertStatus(200);
+            $this->assertDatabaseMissing('reservations', ['id' => $reservation->id]);
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
 }

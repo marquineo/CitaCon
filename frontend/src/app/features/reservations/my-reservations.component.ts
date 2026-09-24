@@ -14,6 +14,12 @@ import { ReservationService, Reservation, Quota } from '../../core/services/rese
   template: `
     <h2 class="h4 mb-3">Mis reservas</h2>
 
+    <div class="btn-group mb-3" role="group">
+      <button type="button" class="btn btn-outline-primary" [class.active]="selectedWeek === 'current'" (click)="selectedWeek = 'current'; loadAll()">Esta semana</button>
+      <button type="button" class="btn btn-outline-primary" [class.active]="selectedWeek === 'next'" (click)="selectedWeek = 'next'; loadAll()">Semana siguiente</button>
+    </div>
+    <span class="text-muted ms-3">Semana del {{ weekStart | date:'dd/MM/yyyy' }}</span>
+
     <div *ngIf="quota" class="alert alert-info">
       Cupo: {{ quota.used }}/{{ quota.assigned }} usados,
       restante: <strong>{{ quota.remaining }}</strong>
@@ -60,7 +66,11 @@ export class MyReservationsComponent implements OnInit {
   errorMessage: string | null = null;
   cancellingId: number | null = null;
 
-  weekStart: string = this.getNextMonday();
+  selectedWeek: 'current' | 'next' = 'current';
+
+  get weekStart(): string {
+    return this.selectedWeek === 'current' ? this.thisMonday() : this.nextMonday();
+  }
 
   constructor(private reservationService: ReservationService) {}
 
@@ -117,12 +127,19 @@ export class MyReservationsComponent implements OnInit {
     });
   }
 
-  private getNextMonday(): string {
+  private thisMonday(): string {
     const now = new Date();
-    const day = now.getDay();
-    const diffToMonday = day === 0 ? 1 : 1 - day;
+    const day = now.getDay(); // 0 dom, 1 lun
+    const diffToMonday = day === 0 ? -6 : 1 - day;
     const monday = new Date(now);
-    monday.setDate(now.getDate() + diffToMonday + 7);
+    monday.setDate(now.getDate() + diffToMonday);
     return monday.toISOString().slice(0, 10);
+  }
+
+  private nextMonday(): string {
+    const thisMon = this.thisMonday();
+    const d = new Date(thisMon);
+    d.setDate(d.getDate() + 7);
+    return d.toISOString().slice(0, 10);
   }
 }

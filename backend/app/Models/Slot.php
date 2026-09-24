@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Builder;
+use Carbon\Carbon;
 
 class Slot extends Model
 {
@@ -45,5 +46,10 @@ class Slot extends Model
     public function isAbierta(): bool
     {
         return $this->status === 'abierta';
+    }
+
+    public function realDateTimeFor(string $weekStart): Carbon
+    {
+        return Carbon::parse($weekStart, 'Europe/Madrid')->addDays($this->day_of_week - 1)->setTimeFromTimeString($this->start_time);
     }
 }

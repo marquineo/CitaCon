@@ -91,11 +91,11 @@ class ReservationController extends Controller
             return response()->json(['message' => 'No encontrado.'], 404);
         }
 
-        // Validar que la franja no haya pasado: week_start + slot.start_time > now()
+        // Validar que la franja no haya pasado: week_start (lunes) + offset day_of_week + start_time > now()
         $reservation->loadMissing('slot');
         $slot = $reservation->slot;
         if ($slot) {
-            $slotDateTime = Carbon::parse($reservation->week_start->format('Y-m-d') . ' ' . $slot->start_time, 'Europe/Madrid');
+            $slotDateTime = $slot->realDateTimeFor($reservation->week_start->format('Y-m-d'));
             if ($slotDateTime->isPast()) {
                 throw ValidationException::withMessages([
                     'week_start' => ['No se puede cancelar una franja ya iniciada/pasada.'],

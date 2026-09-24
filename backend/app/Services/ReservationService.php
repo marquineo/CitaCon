@@ -45,7 +45,7 @@ class ReservationService
             }
 
             // Validar franja no en el pasado: week_start (lunes) + offset day_of_week + start_time > now
-            $slotDateTime = \Carbon\Carbon::parse($weekStart, 'Europe/Madrid')->addDays($slot->day_of_week - 1)->setTimeFromTimeString($slot->start_time);
+            $slotDateTime = $slot->realDateTimeFor($weekStart);
             if ($slotDateTime->isPast()) {
                 throw ValidationException::withMessages([
                     'week_start' => ['No se puede reservar una franja ya iniciada/pasada.'],
