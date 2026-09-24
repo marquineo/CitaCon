@@ -1,6 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReservationService, Reservation, Quota } from '../../core/services/reservation.service';
+import { DayOfWeekPipe } from '../../core/pipes/day-of-week.pipe';
+
+declare const bootstrap: any;
 
 /**
  * T026: Componente "Mis reservas" con botón cancelar y cupo actualizado tras 200.
@@ -10,7 +13,7 @@ import { ReservationService, Reservation, Quota } from '../../core/services/rese
 @Component({
   selector: 'app-my-reservations',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, DayOfWeekPipe],
   template: `
     <h2 class="h4 mb-3">Mis reservas</h2>
 
@@ -39,10 +42,13 @@ import { ReservationService, Reservation, Quota } from '../../core/services/rese
       </thead>
       <tbody>
         <tr *ngFor="let r of reservations">
-          <td>{{ r.slot_id }}</td>
+          <td>
+            <span *ngIf="r.slot">{{ r.slot.day_of_week | dayOfWeek }} {{ r.slot.start_time }}</span>
+            <span *ngIf="!r.slot">Franja no disponible</span>
+          </td>
           <td>{{ r.week_start | date:'dd/MM/yyyy' }}</td>
           <td>
-            <button class="btn btn-sm btn-outline-danger" (click)="onCancel(r)" [disabled]="cancellingId === r.id">
+            <button class="btn btn-sm btn-outline-danger" (click)="openCancelConfirm(r)" [disabled]="cancellingId === r.id">
               {{ cancellingId === r.id ? 'Cancelando...' : 'Cancelar' }}
             </button>
           </td>
@@ -53,6 +59,25 @@ import { ReservationService, Reservation, Quota } from '../../core/services/rese
 
     <div *ngIf="successMessage" class="alert alert-success mt-2">{{ successMessage }}</div>
     <div *ngIf="errorMessage" class="alert alert-danger mt-2">{{ errorMessage }}</div>
+
+    <!-- Modal de confirmación de cancelación -->
+    <div class="modal fade" id="cancelModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Cancelar reserva</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p>¿Seguro que quieres cancelar tu reserva? Se liberará tu cupo semanal.</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" (click)="cancelConfirm()">Cancelar</button>
+            <button type="button" class="btn btn-danger" (click)="confirmCancel()">Sí, cancelar</button>
+          </div>
+        </div>
+      </div>
+    </div>
   `,
   styles: []
 })
@@ -71,6 +96,9 @@ export class MyReservationsComponent implements OnInit {
   get weekStart(): string {
     return this.selectedWeek === 'current' ? this.thisMonday() : this.nextMonday();
   }
+
+  pendingReservation: Reservation | null = null;
+  private modalInstance: any = null;
 
   constructor(private reservationService: ReservationService) {}
 
@@ -106,7 +134,21 @@ export class MyReservationsComponent implements OnInit {
     });
   }
 
-  onCancel(reservation: Reservation): void {
+  openCancelConfirm(reservation: Reservation): void {
+    this.pendingReservation = reservation;
+    const el = document.getElementById('cancelModal');
+    if (el) {
+      this.modalInstance = new bootstrap.Modal(el);
+      this.modalInstance.show();
+    }
+  }
+
+  confirmCancel(): void {
+    if (!this.pendingReservation) return;
+    const reservation = this.pendingReservation;
+    this.modalInstance?.hide();
+    this.pendingReservation = null;
+
     this.successMessage = null;
     this.errorMessage = null;
     this.cancellingId = reservation.id;
@@ -115,16 +157,24 @@ export class MyReservationsComponent implements OnInit {
       next: (res) => {
         this.successMessage = res.message ?? 'Reserva cancelada.';
         this.cancellingId = null;
-        // Refrescar lista y cupo tras 200 — cortesía UI
         this.loadAll();
       },
       error: (err) => {
-        // Mostrar mensaje exacto del backend (404/422), no inventar
         const msg = err?.error?.message ?? err?.error?.errors?.week_start?.[0] ?? 'Error al cancelar';
         this.errorMessage = msg;
         this.cancellingId = null;
       }
     });
+  }
+
+  cancelConfirm(): void {
+    this.modalInstance?.hide();
+    this.pendingReservation = null;
+  }
+
+  onCancel(reservation: Reservation): void {
+    // Compatibilidad: ahora el flujo pasa por openCancelConfirm -> confirmCancel
+    this.openCancelConfirm(reservation);
   }
 
   private thisMonday(): string {

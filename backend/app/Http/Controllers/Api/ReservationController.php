@@ -24,7 +24,7 @@ class ReservationController extends Controller
     {
         $user = $request->user();
         // Cliente solo ve suyas; admin puede filtrar por ?user_id
-        $query = Reservation::query();
+        $query = Reservation::with('slot');
         if ($user->role !== 'administrador') {
             $query->where('user_id', $user->id);
         } elseif ($request->filled('user_id')) {

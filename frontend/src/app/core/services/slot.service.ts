@@ -10,6 +10,7 @@ export interface Slot {
   capacity: number;
   status: 'abierta' | 'bloqueada';
   occupation?: number;
+  is_past?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })

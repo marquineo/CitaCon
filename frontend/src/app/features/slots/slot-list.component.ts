@@ -15,6 +15,11 @@ import { DayOfWeekPipe } from '../../core/pipes/day-of-week.pipe';
   imports: [CommonModule, DayOfWeekPipe],
   template: `
     <h2 class="h4 mb-3">Franjas disponibles</h2>
+    <div class="btn-group mb-3" role="group">
+      <button type="button" class="btn btn-outline-primary" [class.active]="selectedWeek === 'current'" (click)="selectedWeek = 'current'; loadSlots()">Esta semana</button>
+      <button type="button" class="btn btn-outline-primary" [class.active]="selectedWeek === 'next'" (click)="selectedWeek = 'next'; loadSlots()">Semana siguiente</button>
+    </div>
+    <span class="text-muted ms-3">Semana del {{ weekStart | date:'dd/MM/yyyy' }}</span>
     <p *ngIf="loading" class="text-muted">Cargando franjas...</p>
     <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
     <table *ngIf="!loading && slots.length > 0" class="table table-striped">
@@ -61,8 +66,11 @@ export class SlotListComponent implements OnInit {
   loading = true;
   error: string | null = null;
 
-  // Semana ISO lunes (próxima semana para demo, evita franja pasada)
-  weekStart: string = this.getNextMonday();
+  selectedWeek: 'current' | 'next' = 'current';
+
+  get weekStart(): string {
+    return this.selectedWeek === 'current' ? this.thisMonday() : this.nextMonday();
+  }
 
   constructor(
     private slotService: SlotService,
@@ -90,11 +98,13 @@ export class SlotListComponent implements OnInit {
   }
 
   isReserveDisabled(slot: Slot): boolean {
+    if (slot.is_past) return true;
     const occupation = slot.occupation ?? 0;
     return slot.status === 'bloqueada' || occupation >= slot.capacity;
   }
 
   getDisabledReason(slot: Slot): string {
+    if (slot.is_past) return 'Franja ya pasada';
     if (slot.status === 'bloqueada') return 'Franja bloqueada';
     const occupation = slot.occupation ?? 0;
     if (occupation >= slot.capacity) return 'Franja completa';
@@ -116,12 +126,19 @@ export class SlotListComponent implements OnInit {
     });
   }
 
-  private getNextMonday(): string {
+  private thisMonday(): string {
     const now = new Date();
     const day = now.getDay(); // 0 dom, 1 lun
-    const diffToMonday = day === 0 ? 1 : 1 - day;
+    const diffToMonday = day === 0 ? -6 : 1 - day;
     const monday = new Date(now);
-    monday.setDate(now.getDate() + diffToMonday + 7); // próxima semana
+    monday.setDate(now.getDate() + diffToMonday);
     return monday.toISOString().slice(0, 10);
+  }
+
+  private nextMonday(): string {
+    const thisMon = this.thisMonday();
+    const d = new Date(thisMon);
+    d.setDate(d.getDate() + 7);
+    return d.toISOString().slice(0, 10);
   }
 }

@@ -107,4 +107,58 @@ class QuotaAndSlotListTest extends TestCase
         $r3 = $this->getJson('/api/slots');
         $this->assertTrue($r3->status() === 200);
     }
+
+    public function test_listado_de_reservas_incluye_datos_de_la_franja(): void
+    {
+        $week = $this->nextMonday();
+        $cliente = User::create(['name' => 'res-slot@test.test', 'email' => 'res-slot@test.test', 'password' => Hash::make('password'), 'role' => 'cliente', 'weekly_hours' => 5]);
+        $slot = Slot::create(['day_of_week' => 3, 'start_time' => '09:00:00', 'capacity' => 4, 'status' => 'abierta']);
+        Reservation::create(['user_id' => $cliente->id, 'slot_id' => $slot->id, 'week_start' => $week, 'status' => 'confirmada']);
+
+        Sanctum::actingAs($cliente);
+        $response = $this->getJson('/api/reservations');
+        $response->assertStatus(200);
+        $data = $response->json('data');
+        $this->assertIsArray($data);
+        $this->assertNotEmpty($data);
+        $first = $data[0];
+        $this->assertArrayHasKey('slot', $first, 'Cada reserva debe incluir objeto slot anidado');
+        $this->assertArrayHasKey('day_of_week', $first['slot']);
+        $this->assertArrayHasKey('start_time', $first['slot']);
+        $this->assertEquals(3, $first['slot']['day_of_week']);
+        $this->assertEquals('09:00:00', $first['slot']['start_time']);
+    }
+
+    public function test_listado_de_slots_indica_si_franja_ya_paso_para_la_semana_consultada(): void
+    {
+        // Fijar fecha a jueves 2026-09-17 12:00 Europe/Madrid para ser determinista
+        $testNow = Carbon::create(2026, 9, 17, 12, 0, 0, 'Europe/Madrid');
+        Carbon::setTestNow($testNow);
+        try {
+            $monday = Carbon::now('Europe/Madrid')->startOfWeek(Carbon::MONDAY)->toDateString();
+            $this->assertEquals('2026-09-14', $monday, 'Sanity: lunes de semana actual');
+
+            // Lunes 10:00 ya pasó (lunes 2026-09-14 10:00 < jueves 12:00)
+            $slotLunes = Slot::create(['day_of_week' => 1, 'start_time' => '10:00:00', 'capacity' => 4, 'status' => 'abierta']);
+            // Viernes 10:00 aún futuro (viernes 2026-09-18 10:00 > jueves 12:00)
+            $slotViernes = Slot::create(['day_of_week' => 5, 'start_time' => '10:00:00', 'capacity' => 4, 'status' => 'abierta']);
+
+            $user = User::create(['name' => 'is_past@test.test', 'email' => 'is_past@test.test', 'password' => Hash::make('password'), 'role' => 'cliente', 'weekly_hours' => 5]);
+            Sanctum::actingAs($user);
+
+            $response = $this->getJson("/api/slots?week_start=$monday");
+            $response->assertStatus(200);
+
+            $data = collect($response->json('data'));
+            $lunesData = $data->firstWhere('id', $slotLunes->id);
+            $viernesData = $data->firstWhere('id', $slotViernes->id);
+
+            $this->assertNotNull($lunesData, 'Slot lunes encontrado');
+            $this->assertNotNull($viernesData, 'Slot viernes encontrado');
+            $this->assertTrue($lunesData['is_past'] === true, 'Lunes pasado debe ser is_past true');
+            $this->assertTrue($viernesData['is_past'] === false, 'Viernes futuro debe ser is_past false');
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
 }

@@ -24,9 +24,10 @@ class SlotController extends Controller
 
         if ($request->filled('week_start')) {
             $weekStart = $request->input('week_start');
-            // Añadir ocupación por semana si se pide
+            // Añadir ocupación por semana y si franja ya pasó para esa semana
             $slots = $query->get()->map(function (Slot $slot) use ($weekStart) {
                 $slot->occupation = $slot->reservations()->where('week_start', $weekStart)->count();
+                $slot->is_past = $slot->realDateTimeFor($weekStart)->isPast();
                 return $slot;
             });
             return response()->json(['data' => $slots]);
