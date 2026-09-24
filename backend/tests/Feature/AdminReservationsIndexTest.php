@@ -93,4 +93,25 @@ class AdminReservationsIndexTest extends TestCase
         $this->assertContains($rA->id, $ids);
         $this->assertCount(1, $ids);
     }
+
+    public function test_listado_de_reservas_admin_incluye_datos_del_cliente(): void
+    {
+        $week = $this->nextMonday();
+        $admin = User::create(['name' => 'Admin2', 'email' => 'admin2@test.test', 'password' => Hash::make('password'), 'role' => 'administrador', 'weekly_hours' => 0]);
+        $cliente = User::create(['name' => 'Cliente UserDatos', 'email' => 'userdatos@test.test', 'password' => Hash::make('password'), 'role' => 'cliente', 'weekly_hours' => 5]);
+        $slot = Slot::create(['day_of_week' => 2, 'start_time' => '11:00:00', 'capacity' => 4, 'status' => 'abierta']);
+        Reservation::create(['user_id' => $cliente->id, 'slot_id' => $slot->id, 'week_start' => $week, 'status' => 'confirmada']);
+
+        Sanctum::actingAs($admin);
+        $response = $this->getJson("/api/reservations?week_start=$week");
+        $response->assertStatus(200);
+        $data = $response->json('data');
+        $this->assertNotEmpty($data);
+        $first = $data[0];
+        $this->assertArrayHasKey('user', $first, 'Cada reserva debe incluir objeto user anidado');
+        $this->assertArrayHasKey('name', $first['user']);
+        $this->assertArrayHasKey('email', $first['user']);
+        $this->assertEquals('Cliente UserDatos', $first['user']['name']);
+        $this->assertEquals('userdatos@test.test', $first['user']['email']);
+    }
 }

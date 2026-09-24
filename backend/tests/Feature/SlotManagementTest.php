@@ -130,4 +130,60 @@ class SlotManagementTest extends TestCase
         $resp3 = $this->patchJson("/api/slots/{$slot->id}/block");
         $resp3->assertStatus(403);
     }
+
+    public function test_admin_puede_crear_franja_con_entrenador(): void
+    {
+        Sanctum::actingAs($this->admin());
+
+        $resp = $this->postJson('/api/slots', [
+            'day_of_week' => 2,
+            'start_time' => '11:00:00',
+            'capacity' => 4,
+            'trainer' => 'Carlos',
+        ]);
+
+        $resp->assertStatus(201);
+        $resp->assertJsonPath('data.trainer', 'Carlos');
+        $this->assertDatabaseHas('slots', ['day_of_week' => 2, 'start_time' => '11:00:00', 'trainer' => 'Carlos']);
+
+        // Verifica que el listado incluye trainer
+        $list = $this->getJson('/api/slots');
+        $list->assertStatus(200);
+        $found = collect($list->json('data'))->firstWhere('id', $resp->json('data.id'));
+        $this->assertNotNull($found);
+        $this->assertEquals('Carlos', $found['trainer']);
+    }
+
+    public function test_crear_franja_sin_entrenador_usa_null_o_valor_por_defecto(): void
+    {
+        Sanctum::actingAs($this->admin());
+
+        $resp = $this->postJson('/api/slots', [
+            'day_of_week' => 3,
+            'start_time' => '12:00:00',
+            'capacity' => 4,
+        ]);
+
+        $resp->assertStatus(201);
+        $this->assertTrue(array_key_exists('trainer', $resp->json('data')), 'Respuesta debe incluir trainer aunque sea null');
+        $this->assertNull($resp->json('data.trainer'));
+
+        $this->assertDatabaseHas('slots', ['day_of_week' => 3, 'start_time' => '12:00:00', 'trainer' => null]);
+
+        // Listado también expone trainer
+        $list = $this->getJson('/api/slots');
+        $found = collect($list->json('data'))->firstWhere('id', $resp->json('data.id'));
+        $this->assertTrue(array_key_exists('trainer', $found));
+        $this->assertNull($found['trainer']);
+
+        // Validación: trainer inválido debe dar 422
+        $respInvalid = $this->postJson('/api/slots', [
+            'day_of_week' => 3,
+            'start_time' => '13:00:00',
+            'capacity' => 4,
+            'trainer' => 'Bob',
+        ]);
+        $respInvalid->assertStatus(422);
+        $respInvalid->assertJsonValidationErrors(['trainer']);
+    }
 }

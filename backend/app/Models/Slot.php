@@ -13,12 +13,17 @@ class Slot extends Model
         'day_of_week',
         'start_time',
         'capacity',
+        'trainer',
         'status',
     ];
 
     protected $casts = [
         'day_of_week' => 'integer',
         'capacity' => 'integer',
+    ];
+
+    protected $attributes = [
+        'trainer' => null,
     ];
 
     public function reservations(): HasMany
