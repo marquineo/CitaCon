@@ -15,7 +15,7 @@ import { AuthService } from './core/services/auth.service';
           <ng-container *ngIf="isLoggedIn()">
             <a class="nav-link" routerLink="/">Franjas</a>
             <a class="nav-link" routerLink="/my-reservations">Mis reservas</a>
-            <a *ngIf="isAdmin()" class="nav-link" routerLink="/admin/slots">Admin Slots</a>
+            <a *ngIf="isAdmin()" class="nav-link" routerLink="/admin/slots">Gestión de Franjas</a>
             <a *ngIf="isAdmin()" class="nav-link" routerLink="/admin/quota">Admin Quota</a>
             <button class="nav-link btn btn-link" (click)="onLogout()">Cerrar sesión</button>
           </ng-container>

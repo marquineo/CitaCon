@@ -35,7 +35,7 @@ declare const bootstrap: any;
     <table *ngIf="!loading && reservations.length > 0" class="table">
       <thead>
         <tr>
-          <th>Slot</th>
+          <th>Franja</th>
           <th>Semana</th>
           <th>Acción</th>
         </tr>

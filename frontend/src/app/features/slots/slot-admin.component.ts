@@ -17,7 +17,7 @@ declare const bootstrap: any;
   imports: [CommonModule, FormsModule, DayOfWeekPipe],
   template: `
     <h2 class="h4 mb-2">Gestión de franjas (Admin)</h2>
-    <p class="text-muted">Solo visible para administradores — el backend valida con SlotPolicy.</p>
+    <p class="text-muted">Solo visible para administradores — el sistema valida los permisos.</p>
 
     <div class="card mb-4">
       <div class="card-body">
