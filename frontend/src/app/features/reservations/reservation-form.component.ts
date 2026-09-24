@@ -16,41 +16,37 @@ import { SlotService, Slot } from '../../core/services/slot.service';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <h2>Reservar entrenamiento</h2>
+    <h2 class="h4 mb-3">Reservar entrenamiento</h2>
 
-    <div *ngIf="quota" class="quota">
+    <div *ngIf="quota" class="alert alert-info">
       Cupo semanal: {{ quota.used }}/{{ quota.assigned }} usados,
       restante: <strong>{{ quota.remaining }}</strong>
       <span *ngIf="quota.remaining === 0">(sin horas disponibles)</span>
     </div>
-    <p *ngIf="!quota && !quotaError">Cargando cupo...</p>
-    <p *ngIf="quotaError" class="error">{{ quotaError }}</p>
+    <p *ngIf="!quota && !quotaError" class="text-muted">Cargando cupo...</p>
+    <div *ngIf="quotaError" class="alert alert-danger">{{ quotaError }}</div>
 
-    <label>
-      Semana (lunes ISO):
-      <input type="date" [(ngModel)]="weekStart" (change)="onWeekChange()" />
-    </label>
+    <div class="mb-3">
+      <label class="form-label">Semana (lunes ISO):</label>
+      <input type="date" class="form-control" [(ngModel)]="weekStart" (change)="onWeekChange()" />
+    </div>
 
-    <label>
-      Franja:
-      <select [(ngModel)]="selectedSlotId">
+    <div class="mb-3">
+      <label class="form-label">Franja:</label>
+      <select class="form-control" [(ngModel)]="selectedSlotId">
         <option [ngValue]="null">-- selecciona --</option>
         <option *ngFor="let slot of slots" [ngValue]="slot.id">
           Día {{ slot.day_of_week }} {{ slot.start_time }} — {{ slot.occupation ?? 0 }}/{{ slot.capacity }} ({{ slot.status }})
         </option>
       </select>
-    </label>
+    </div>
 
-    <button (click)="onSubmit()" [disabled]="!selectedSlotId">Reservar</button>
+    <button class="btn btn-primary" (click)="onSubmit()" [disabled]="!selectedSlotId">Reservar</button>
 
-    <p *ngIf="successMessage" class="success">{{ successMessage }}</p>
-    <p *ngIf="errorMessage" class="error">{{ errorMessage }}</p>
+    <div *ngIf="successMessage" class="alert alert-success mt-3">{{ successMessage }}</div>
+    <div *ngIf="errorMessage" class="alert alert-danger mt-3">{{ errorMessage }}</div>
   `,
-  styles: [`
-    .quota { margin: 0.5rem 0; }
-    .error { color: #b00020; white-space: pre-wrap; }
-    .success { color: #006400; }
-  `]
+  styles: []
 })
 export class ReservationFormComponent implements OnInit {
   weekStart: string = this.getNextMonday();

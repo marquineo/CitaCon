@@ -27,37 +27,42 @@ interface Client {
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <h2>Gestión de cupos semanales (Admin)</h2>
-    <p class="hint">Solo para administradores — el backend valida con UserPolicy.</p>
+    <h2 class="h4 mb-2">Gestión de cupos semanales (Admin)</h2>
+    <p class="text-muted">Solo para administradores — el backend valida con UserPolicy.</p>
 
-    <p *ngIf="loading">Cargando clientes...</p>
-    <p *ngIf="error" class="error">{{ error }}</p>
+    <p *ngIf="loading" class="text-muted">Cargando clientes...</p>
+    <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
 
-    <ul *ngIf="!loading" class="client-list">
-      <li *ngFor="let client of clients" class="client-row">
-        <span class="client-info">
-          {{ client.name }} ({{ client.email }}) — Horas actuales: <strong>{{ client.weekly_hours }}</strong>
-        </span>
-        <label>
-          Nuevo cupo:
-          <input type="number" [(ngModel)]="client._editValue" [attr.min]="0" [attr.max]="50" />
-        </label>
-        <button (click)="onSave(client)" [disabled]="client._saving">
-          {{ client._saving ? 'Guardando...' : 'Guardar' }}
-        </button>
-        <span *ngIf="client._error" class="error">{{ client._error }}</span>
-      </li>
-    </ul>
-    <p *ngIf="!loading && clients.length === 0">No hay clientes.</p>
+    <table *ngIf="!loading && clients.length > 0" class="table table-striped">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Email</th>
+          <th>Horas actuales</th>
+          <th>Nuevo cupo</th>
+          <th>Acción</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let client of clients">
+          <td>{{ client.name }}</td>
+          <td>{{ client.email }}</td>
+          <td><span class="badge bg-primary">{{ client.weekly_hours }}</span></td>
+          <td>
+            <input type="number" class="form-control form-control-sm" [(ngModel)]="client._editValue" [attr.min]="0" [attr.max]="50" style="width: 80px;" />
+            <div *ngIf="client._error" class="alert alert-danger mt-1 p-1 small">{{ client._error }}</div>
+          </td>
+          <td>
+            <button class="btn btn-sm btn-primary" (click)="onSave(client)" [disabled]="client._saving">
+              {{ client._saving ? 'Guardando...' : 'Guardar' }}
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p *ngIf="!loading && clients.length === 0" class="text-muted">No hay clientes.</p>
   `,
-  styles: [`
-    .client-list { list-style: none; padding: 0; }
-    .client-row { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; margin: 0.75rem 0; padding: 0.5rem; border: 1px solid #eee; }
-    .client-info { min-width: 250px; }
-    input[type=number] { width: 80px; }
-    .error { color: #b00020; white-space: pre-wrap; font-size: 0.9rem; }
-    .hint { font-size: 0.9rem; color: #666; }
-  `]
+  styles: []
 })
 export class AdminQuotaComponent implements OnInit {
   clients: Client[] = [];

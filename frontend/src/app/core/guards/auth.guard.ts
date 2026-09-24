@@ -33,7 +33,7 @@ export const adminGuard: CanActivateFn = () => {
   const http = inject(HttpClient);
   return http.get<any>(`${environment.apiUrl}/api/user`).pipe(
     map(user => {
-      if (user.role === 'administrador') return true;
+      if (user.data.role === 'administrador') return true;
       router.navigate(['/']);
       return false;
     }),

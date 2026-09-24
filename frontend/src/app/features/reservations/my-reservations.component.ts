@@ -12,39 +12,43 @@ import { ReservationService, Reservation, Quota } from '../../core/services/rese
   standalone: true,
   imports: [CommonModule],
   template: `
-    <h2>Mis reservas</h2>
+    <h2 class="h4 mb-3">Mis reservas</h2>
 
-    <div *ngIf="quota" class="quota">
+    <div *ngIf="quota" class="alert alert-info">
       Cupo: {{ quota.used }}/{{ quota.assigned }} usados,
       restante: <strong>{{ quota.remaining }}</strong>
     </div>
-    <p *ngIf="quotaError" class="error">{{ quotaError }}</p>
+    <div *ngIf="quotaError" class="alert alert-danger">{{ quotaError }}</div>
 
-    <p *ngIf="loading">Cargando reservas...</p>
-    <p *ngIf="error" class="error">{{ error }}</p>
+    <p *ngIf="loading" class="text-muted">Cargando reservas...</p>
+    <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
 
-    <ul *ngIf="!loading">
-      <li *ngFor="let r of reservations" class="reservation-item">
-        <span>
-          Reserva #{{ r.id }} — Slot {{ r.slot_id }} — Semana {{ r.week_start }}
-        </span>
-        <button (click)="onCancel(r)" [disabled]="cancellingId === r.id">
-          {{ cancellingId === r.id ? 'Cancelando...' : 'Cancelar' }}
-        </button>
-      </li>
-    </ul>
-    <p *ngIf="!loading && reservations.length === 0">No tienes reservas.</p>
+    <table *ngIf="!loading && reservations.length > 0" class="table">
+      <thead>
+        <tr>
+          <th>Slot</th>
+          <th>Semana</th>
+          <th>Acción</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let r of reservations">
+          <td>{{ r.slot_id }}</td>
+          <td>{{ r.week_start | date:'dd/MM/yyyy' }}</td>
+          <td>
+            <button class="btn btn-sm btn-outline-danger" (click)="onCancel(r)" [disabled]="cancellingId === r.id">
+              {{ cancellingId === r.id ? 'Cancelando...' : 'Cancelar' }}
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p *ngIf="!loading && reservations.length === 0" class="text-muted">No tienes reservas.</p>
 
-    <p *ngIf="successMessage" class="success">{{ successMessage }}</p>
-    <p *ngIf="errorMessage" class="error">{{ errorMessage }}</p>
+    <div *ngIf="successMessage" class="alert alert-success mt-2">{{ successMessage }}</div>
+    <div *ngIf="errorMessage" class="alert alert-danger mt-2">{{ errorMessage }}</div>
   `,
-  styles: [`
-    .quota { margin: 0.5rem 0; }
-    .reservation-item { display: flex; gap: 1rem; align-items: center; margin: 0.5rem 0; }
-    .error { color: #b00020; white-space: pre-wrap; }
-    .success { color: #006400; }
-    button[disabled] { opacity: 0.5; }
-  `]
+  styles: []
 })
 export class MyReservationsComponent implements OnInit {
   reservations: Reservation[] = [];

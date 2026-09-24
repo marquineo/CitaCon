@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SlotService, Slot } from '../../core/services/slot.service';
 import { ReservationService } from '../../core/services/reservation.service';
+import { DayOfWeekPipe } from '../../core/pipes/day-of-week.pipe';
 
 /**
  * T021: Listado de franjas con ocupación y UX deshabilitada si completa/bloqueada.
@@ -11,40 +12,49 @@ import { ReservationService } from '../../core/services/reservation.service';
 @Component({
   selector: 'app-slot-list',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, DayOfWeekPipe],
   template: `
-    <h2>Franjas disponibles</h2>
-    <p *ngIf="loading">Cargando franjas...</p>
-    <p *ngIf="error" class="error">{{ error }}</p>
-    <ul *ngIf="!loading">
-      <li *ngFor="let slot of slots" class="slot-item">
-        <span class="slot-info">
-          Día {{ slot.day_of_week }} - {{ slot.start_time }} |
-          Capacidad: {{ slot.capacity }} |
-          Ocupación: {{ slot.occupation ?? 0 }}/{{ slot.capacity }} |
-          Estado: {{ slot.status }}
-        </span>
-        <button
-          (click)="onReserve(slot)"
-          [disabled]="isReserveDisabled(slot)"
-          [title]="getDisabledReason(slot)"
-          [attr.aria-disabled]="isReserveDisabled(slot)"
-        >
-          Reservar
-        </button>
-        <span *ngIf="isReserveDisabled(slot)" class="hint">
-          {{ getDisabledReason(slot) }}
-        </span>
-      </li>
-    </ul>
-    <p *ngIf="!loading && slots.length === 0">No hay franjas para esta semana.</p>
+    <h2 class="h4 mb-3">Franjas disponibles</h2>
+    <p *ngIf="loading" class="text-muted">Cargando franjas...</p>
+    <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
+    <table *ngIf="!loading && slots.length > 0" class="table table-striped">
+      <thead>
+        <tr>
+          <th>Día</th>
+          <th>Hora</th>
+          <th>Capacidad</th>
+          <th>Ocupación</th>
+          <th>Estado</th>
+          <th>Acción</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let slot of slots">
+          <td>{{ slot.day_of_week | dayOfWeek }}</td>
+          <td>{{ slot.start_time }}</td>
+          <td>{{ slot.capacity }}</td>
+          <td>{{ slot.occupation ?? 0 }}/{{ slot.capacity }}</td>
+          <td>
+            <span class="badge" [ngClass]="slot.status === 'abierta' ? 'bg-success' : 'bg-danger'">{{ slot.status }}</span>
+          </td>
+          <td>
+            <button
+              class="btn btn-sm btn-primary"
+              (click)="onReserve(slot)"
+              [disabled]="isReserveDisabled(slot)"
+              [title]="getDisabledReason(slot)"
+              [attr.aria-disabled]="isReserveDisabled(slot)"
+            >
+              Reservar
+            </button>
+            <small *ngIf="isReserveDisabled(slot)" class="text-muted ms-2">{{ getDisabledReason(slot) }}</small>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p *ngIf="!loading && slots.length === 0" class="text-muted">No hay franjas para esta semana.</p>
   `,
-  styles: [`
-    .slot-item { margin: 0.5rem 0; display: flex; gap: 1rem; align-items: center; }
-    button[disabled] { opacity: 0.5; cursor: not-allowed; }
-    .hint { font-size: 0.85rem; color: #666; }
-    .error { color: #b00020; }
-  `]
+  styles: []
 })
 export class SlotListComponent implements OnInit {
   slots: Slot[] = [];

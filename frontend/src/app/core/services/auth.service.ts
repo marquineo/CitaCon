@@ -27,6 +27,7 @@ export interface LoginResponse {
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly TOKEN_KEY = 'citacon_token';
+  private readonly ROLE_KEY = 'citacon_role';
 
   constructor(private http: HttpClient) {}
 
@@ -38,6 +39,9 @@ export class AuthService {
           if (res?.token) {
             localStorage.setItem(this.TOKEN_KEY, res.token);
           }
+          if (res?.data?.role) {
+            localStorage.setItem(this.ROLE_KEY, res.data.role);
+          }
         })
       );
   }
@@ -46,6 +50,7 @@ export class AuthService {
     return this.http.post<void>(`${environment.apiUrl}/api/logout`, {}).pipe(
       finalize(() => {
         localStorage.removeItem(this.TOKEN_KEY);
+        localStorage.removeItem(this.ROLE_KEY);
       })
     );
   }
@@ -54,8 +59,21 @@ export class AuthService {
     return localStorage.getItem(this.TOKEN_KEY);
   }
 
+  getRole(): string | null {
+    return localStorage.getItem(this.ROLE_KEY);
+  }
+
+  isAdmin(): boolean {
+    return this.getRole() === 'administrador';
+  }
+
   me(): Observable<User> {
     return this.http.get<{ data: User }>(`${environment.apiUrl}/api/user`).pipe(
+      tap(res => {
+        if (res?.data?.role) {
+          localStorage.setItem(this.ROLE_KEY, res.data.role);
+        }
+      }),
       map(res => res.data)
     );
   }

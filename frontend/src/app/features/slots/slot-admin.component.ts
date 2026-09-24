@@ -2,6 +2,9 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SlotService, Slot } from '../../core/services/slot.service';
+import { DayOfWeekPipe } from '../../core/pipes/day-of-week.pipe';
+
+declare const bootstrap: any;
 
 /**
  * T032: UI Angular de gestión de franjas para admin — solo cortesía de UX.
@@ -11,60 +14,124 @@ import { SlotService, Slot } from '../../core/services/slot.service';
 @Component({
   selector: 'app-slot-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, DayOfWeekPipe],
   template: `
-    <h2>Gestión de franjas (Admin)</h2>
-    <p class="hint">Solo visible para administradores — el backend valida con SlotPolicy.</p>
+    <h2 class="h4 mb-2">Gestión de franjas (Admin)</h2>
+    <p class="text-muted">Solo visible para administradores — el backend valida con SlotPolicy.</p>
 
-    <form (ngSubmit)="onCreate()" class="create-form">
-      <h3>Crear franja</h3>
-      <label>Día (1=Lunes ... 5=Viernes):
-        <input type="number" [(ngModel)]="newSlot.day_of_week" name="day" min="1" max="5" required />
-      </label>
-      <label>Hora inicio (07:00-21:00 en punto):
-        <input type="time" [(ngModel)]="newSlot.start_time" name="time" step="3600" required />
-      </label>
-      <label>Capacidad:
-        <input type="number" [(ngModel)]="newSlot.capacity" name="capacity" min="1" max="50" />
-      </label>
-      <button type="submit">Crear</button>
-    </form>
+    <div class="card mb-4">
+      <div class="card-body">
+        <h3 class="h5 card-title">Crear franja</h3>
+        <form (ngSubmit)="onCreate()">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label">Día (1=Lunes ... 5=Viernes):</label>
+              <input type="number" class="form-control" [(ngModel)]="newSlot.day_of_week" name="day" min="1" max="5" required />
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Hora inicio (07:00-21:00 en punto):</label>
+              <input type="time" class="form-control" [(ngModel)]="newSlot.start_time" name="time" step="3600" required />
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Capacidad:</label>
+              <input type="number" class="form-control" [(ngModel)]="newSlot.capacity" name="capacity" min="1" max="50" />
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary mt-3">Crear</button>
+        </form>
+      </div>
+    </div>
 
-    <p *ngIf="error" class="error">{{ error }}</p>
-    <p *ngIf="success" class="success">{{ success }}</p>
+    <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
+    <div *ngIf="success" class="alert alert-success">{{ success }}</div>
 
-    <h3>Franjas (semana {{ weekStart }})</h3>
-    <p *ngIf="loading">Cargando...</p>
-    <ul *ngIf="!loading">
-      <li *ngFor="let slot of slots" class="slot-row">
-        <span>
-          {{ dayName(slot.day_of_week) }} {{ slot.start_time }} —
-          Capacidad {{ slot.capacity }} — Ocupación {{ slot.occupation ?? 0 }}/{{ slot.capacity }} —
-          Estado: {{ slot.status }}
-        </span>
-        <button (click)="onEdit(slot)">Editar</button>
-        <button (click)="onDelete(slot)">Eliminar</button>
-        <button *ngIf="slot.status === 'abierta'" (click)="onBlock(slot)">Bloquear</button>
-        <button *ngIf="slot.status === 'bloqueada'" (click)="onUnblock(slot)">Desbloquear</button>
-      </li>
-    </ul>
+    <h3 class="h5 mt-4">Franjas (semana {{ weekStart | date:'dd/MM/yyyy' }})</h3>
+    <p *ngIf="loading" class="text-muted">Cargando...</p>
+    <table *ngIf="!loading" class="table table-striped">
+      <thead>
+        <tr>
+          <th>Día</th>
+          <th>Hora</th>
+          <th>Capacidad</th>
+          <th>Ocupación</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let slot of slots">
+          <td>{{ slot.day_of_week | dayOfWeek }}</td>
+          <td>{{ slot.start_time }}</td>
+          <td>{{ slot.capacity }}</td>
+          <td>{{ slot.occupation ?? 0 }}/{{ slot.capacity }}</td>
+          <td><span class="badge" [ngClass]="slot.status === 'abierta' ? 'bg-success' : 'bg-danger'">{{ slot.status }}</span></td>
+          <td>
+            <div class="btn-group btn-group-sm" role="group">
+              <button class="btn btn-outline-primary" (click)="onEdit(slot)">Editar</button>
+              <button class="btn btn-outline-danger" (click)="openConfirm('delete', slot)">Eliminar</button>
+              <button *ngIf="slot.status === 'abierta'" class="btn btn-outline-warning" (click)="openConfirm('block', slot)">Bloquear</button>
+              <button *ngIf="slot.status === 'bloqueada'" class="btn btn-outline-success" (click)="onUnblock(slot)">Desbloquear</button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
 
-    <div *ngIf="editingSlot" class="edit-form">
-      <h3>Editar franja #{{ editingSlot.id }}</h3>
-      <label>Día: <input type="number" [(ngModel)]="editingSlot.day_of_week" min="1" max="5" /></label>
-      <label>Hora: <input type="time" [(ngModel)]="editingSlot.start_time" step="3600" /></label>
-      <label>Capacidad: <input type="number" [(ngModel)]="editingSlot.capacity" min="1" max="50" /></label>
-      <button (click)="onUpdate()">Guardar</button>
-      <button (click)="editingSlot = null">Cancelar</button>
+    <div *ngIf="editingSlot" class="card mt-4">
+      <div class="card-body">
+        <h3 class="h5 card-title">Editar franja #{{ editingSlot.id }}</h3>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">Día:</label>
+            <input type="number" class="form-control" [(ngModel)]="editingSlot.day_of_week" min="1" max="5" />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Hora:</label>
+            <input type="time" class="form-control" [(ngModel)]="editingSlot.start_time" step="3600" />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Capacidad:</label>
+            <input type="number" class="form-control" [(ngModel)]="editingSlot.capacity" min="1" max="50" />
+          </div>
+        </div>
+        <div class="mt-3">
+          <button class="btn btn-primary me-2" (click)="onUpdate()">Guardar</button>
+          <button class="btn btn-secondary" (click)="editingSlot = null">Cancelar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de confirmación Bootstrap -->
+    <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" *ngIf="pendingAction === 'block'">
+              Bloquear franja de {{ pendingSlot ? (pendingSlot.day_of_week | dayOfWeek) : '' }} {{ pendingSlot?.start_time }}
+            </h5>
+            <h5 class="modal-title" *ngIf="pendingAction === 'delete'">
+              Eliminar franja de {{ pendingSlot ? (pendingSlot.day_of_week | dayOfWeek) : '' }} {{ pendingSlot?.start_time }}
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p *ngIf="pendingAction === 'block'">
+              Esta franja dejará de estar disponible para nuevas reservas. Los clientes que ya tuvieran reservada esta franja en semanas futuras recuperarán su hora automáticamente.
+            </p>
+            <p *ngIf="pendingAction === 'delete'">
+              Esta franja se eliminará por completo. Esta acción no se puede deshacer.
+            </p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" (click)="cancelConfirm()">Cancelar</button>
+            <button *ngIf="pendingAction === 'block'" type="button" class="btn btn-warning" (click)="confirmAction()">Bloquear</button>
+            <button *ngIf="pendingAction === 'delete'" type="button" class="btn btn-danger" (click)="confirmAction()">Eliminar</button>
+          </div>
+        </div>
+      </div>
     </div>
   `,
-  styles: [`
-    .create-form, .edit-form { border: 1px solid #ccc; padding: 1rem; margin: 1rem 0; display: flex; flex-direction: column; gap: 0.5rem; }
-    .slot-row { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin: 0.5rem 0; }
-    .error { color: #b00020; white-space: pre-wrap; }
-    .success { color: #006400; }
-    .hint { font-size: 0.9rem; color: #666; }
-  `]
+  styles: []
 })
 export class SlotAdminComponent implements OnInit {
   slots: Slot[] = [];
@@ -76,6 +143,10 @@ export class SlotAdminComponent implements OnInit {
 
   newSlot: Partial<Slot> = { day_of_week: 1, start_time: '08:00:00', capacity: 4 };
   editingSlot: Slot | null = null;
+
+  pendingAction: 'block' | 'delete' | null = null;
+  pendingSlot: Slot | null = null;
+  private modalInstance: any = null;
 
   constructor(private slotService: SlotService) {}
 
@@ -96,6 +167,48 @@ export class SlotAdminComponent implements OnInit {
         this.loading = false;
       }
     });
+  }
+
+  openConfirm(action: 'block' | 'delete', slot: Slot): void {
+    this.pendingAction = action;
+    this.pendingSlot = slot;
+    const el = document.getElementById('confirmModal');
+    if (el) {
+      this.modalInstance = new bootstrap.Modal(el);
+      this.modalInstance.show();
+    }
+  }
+
+  confirmAction(): void {
+    if (!this.pendingSlot || !this.pendingAction) return;
+    const slot = this.pendingSlot;
+    const action = this.pendingAction;
+    this.modalInstance?.hide();
+    if (action === 'delete') {
+      this.slotService.delete(slot.id).subscribe({
+        next: () => {
+          this.success = 'Franja eliminada';
+          this.loadSlots();
+        },
+        error: (err) => this.error = err?.error?.message ?? 'Error al eliminar'
+      });
+    } else if (action === 'block') {
+      this.slotService.block(slot.id).subscribe({
+        next: () => {
+          this.success = 'Franja bloqueada (reservas futuras eliminadas)';
+          this.loadSlots();
+        },
+        error: (err) => this.error = err?.error?.message ?? 'Error al bloquear'
+      });
+    }
+    this.pendingAction = null;
+    this.pendingSlot = null;
+  }
+
+  cancelConfirm(): void {
+    this.modalInstance?.hide();
+    this.pendingAction = null;
+    this.pendingSlot = null;
   }
 
   onCreate(): void {
@@ -134,26 +247,15 @@ export class SlotAdminComponent implements OnInit {
     });
   }
 
-  onDelete(slot: Slot): void {
-    if (!confirm(`¿Eliminar franja Día ${slot.day_of_week} ${slot.start_time}?`)) return;
-    this.slotService.delete(slot.id).subscribe({
-      next: () => {
-        this.success = 'Franja eliminada';
-        this.loadSlots();
-      },
-      error: (err) => this.error = err?.error?.message ?? 'Error al eliminar'
-    });
+  onDelete(_slot: Slot): void {
+    // Deprecated: usar openConfirm('delete', slot) + confirmAction()
+    // Mantenido por compatibilidad si se llama programáticamente
+    this.openConfirm('delete', _slot);
   }
 
-  onBlock(slot: Slot): void {
-    if (!confirm(`¿Bloquear franja Día ${slot.day_of_week} ${slot.start_time}? Se cancelarán en cascada las reservas futuras (hard DELETE) y se liberará el cupo. ¿Continuar?`)) return;
-    this.slotService.block(slot.id).subscribe({
-      next: () => {
-        this.success = 'Franja bloqueada (reservas futuras eliminadas)';
-        this.loadSlots();
-      },
-      error: (err) => this.error = err?.error?.message ?? 'Error al bloquear'
-    });
+  onBlock(_slot: Slot): void {
+    // Deprecated: usar openConfirm('block', slot) + confirmAction()
+    this.openConfirm('block', _slot);
   }
 
   onUnblock(slot: Slot): void {
@@ -164,10 +266,6 @@ export class SlotAdminComponent implements OnInit {
       },
       error: (err) => this.error = err?.error?.message ?? 'Error al desbloquear'
     });
-  }
-
-  dayName(day: number): string {
-    return ['?', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'][day] ?? String(day);
   }
 
   private getNextMonday(): string {

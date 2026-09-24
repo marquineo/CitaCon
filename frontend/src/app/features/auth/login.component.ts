@@ -9,33 +9,31 @@ import { AuthService } from '../../core/services/auth.service';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <h2>Iniciar sesión</h2>
-
-    <form (ngSubmit)="onSubmit()" #loginForm="ngForm">
-      <label>
-        Email:
-        <input type="email" [(ngModel)]="email" name="email" required />
-      </label>
-
-      <label>
-        Password:
-        <input type="password" [(ngModel)]="password" name="password" required />
-      </label>
-
-      <button type="submit" [disabled]="!email || !password || loading">
-        {{ loading ? 'Entrando...' : 'Entrar' }}
-      </button>
-    </form>
-
-    <p *ngIf="errorMessage" class="error">{{ errorMessage }}</p>
+    <div class="row justify-content-center">
+      <div class="col-md-6 col-lg-4">
+        <div class="card">
+          <div class="card-body">
+            <h2 class="card-title h4 mb-3">Iniciar sesión</h2>
+            <form (ngSubmit)="onSubmit()" #loginForm="ngForm">
+              <div class="mb-3">
+                <label class="form-label">Email:</label>
+                <input type="email" class="form-control" [(ngModel)]="email" name="email" required />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Password:</label>
+                <input type="password" class="form-control" [(ngModel)]="password" name="password" required />
+              </div>
+              <button type="submit" class="btn btn-primary w-100" [disabled]="!email || !password || loading">
+                {{ loading ? 'Entrando...' : 'Entrar' }}
+              </button>
+            </form>
+            <div *ngIf="errorMessage" class="alert alert-danger mt-3">{{ errorMessage }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
   `,
-  styles: [`
-    form { display: flex; flex-direction: column; gap: 0.75rem; max-width: 320px; }
-    label { display: flex; flex-direction: column; font-size: 0.9rem; }
-    input { padding: 0.4rem; }
-    button[disabled] { opacity: 0.5; }
-    .error { color: #b00020; white-space: pre-wrap; margin-top: 0.75rem; }
-  `]
+  styles: []
 })
 export class LoginComponent {
   email = '';
