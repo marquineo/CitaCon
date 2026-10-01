@@ -10,7 +10,7 @@ import { AuthService } from '../../core/services/auth.service';
   imports: [CommonModule, FormsModule],
   template: `
     <div class="row justify-content-center">
-      <div class="col-md-6 col-lg-4">
+      <div class="col-12 col-md-6 col-lg-4">
         <div class="card">
           <div class="card-body">
             <h2 class="card-title h4 mb-3">Iniciar sesión</h2>

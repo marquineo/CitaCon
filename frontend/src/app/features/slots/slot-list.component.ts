@@ -29,13 +29,16 @@ interface Client {
   imports: [CommonModule, FormsModule, DayOfWeekPipe],
   template: `
     <h2 class="h4 mb-3">Franjas disponibles</h2>
-    <div class="btn-group mb-3" role="group">
-      <button type="button" class="btn btn-outline-primary" [class.active]="selectedWeek === 'current'" (click)="selectedWeek = 'current'; onWeekChange()">Esta semana</button>
-      <button type="button" class="btn btn-outline-primary" [class.active]="selectedWeek === 'next'" (click)="selectedWeek = 'next'; onWeekChange()">Semana siguiente</button>
+    <div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center gap-2 mb-3">
+      <div class="btn-group flex-wrap" role="group">
+        <button type="button" class="btn btn-outline-primary" [class.active]="selectedWeek === 'current'" (click)="selectedWeek = 'current'; onWeekChange()">Esta semana</button>
+        <button type="button" class="btn btn-outline-primary" [class.active]="selectedWeek === 'next'" (click)="selectedWeek = 'next'; onWeekChange()">Semana siguiente</button>
+      </div>
+      <span class="text-muted">Semana del {{ weekStart | date:'dd/MM/yyyy' }}</span>
     </div>
-    <span class="text-muted ms-3">Semana del {{ weekStart | date:'dd/MM/yyyy' }}</span>
     <p *ngIf="loading" class="text-muted">Cargando franjas...</p>
     <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
+    <div class="table-responsive">
     <table *ngIf="!loading && slots.length > 0" class="table table-striped">
       <thead>
         <tr>
@@ -87,7 +90,7 @@ interface Client {
                       <button class="btn btn-sm btn-outline-danger" (click)="onRemoveReservation(r)">Quitar</button>
                     </li>
                   </ul>
-                  <div class="d-flex gap-2 align-items-end">
+                  <div class="d-flex flex-column flex-sm-row gap-2 align-items-stretch align-items-sm-end">
                     <div class="flex-grow-1">
                       <label class="form-label">Añadir cliente:</label>
                       <select class="form-control" [(ngModel)]="selectedClientForSlot[slot.id]">
@@ -97,7 +100,7 @@ interface Client {
                         </option>
                       </select>
                     </div>
-                    <button class="btn btn-primary" (click)="onAddReservation(slot)" [disabled]="!selectedClientForSlot[slot.id]">Añadir</button>
+                    <button class="btn btn-primary w-100 w-sm-auto" (click)="onAddReservation(slot)" [disabled]="!selectedClientForSlot[slot.id]">Añadir</button>
                   </div>
                 </div>
               </div>
@@ -106,6 +109,7 @@ interface Client {
         </ng-container>
       </tbody>
     </table>
+    </div>
     <p *ngIf="!loading && slots.length === 0" class="text-muted">No hay franjas para esta semana.</p>
   `,
   styles: []

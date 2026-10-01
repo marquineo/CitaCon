@@ -20,39 +20,41 @@ declare const bootstrap: any;
     <h2 class="h4 mb-2">Gestión de franjas (Admin)</h2>
     <p class="text-muted">Solo visible para administradores — el sistema valida los permisos.</p>
 
-    <div class="btn-group mb-3" role="group">
-      <button type="button" class="btn btn-outline-primary" [class.active]="selectedWeek === 'current'" (click)="selectedWeek = 'current'; loadSlots()">Esta semana</button>
-      <button type="button" class="btn btn-outline-primary" [class.active]="selectedWeek === 'next'" (click)="selectedWeek = 'next'; loadSlots()">Semana siguiente</button>
+    <div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center gap-2 mb-3">
+      <div class="btn-group flex-wrap" role="group">
+        <button type="button" class="btn btn-outline-primary" [class.active]="selectedWeek === 'current'" (click)="selectedWeek = 'current'; loadSlots()">Esta semana</button>
+        <button type="button" class="btn btn-outline-primary" [class.active]="selectedWeek === 'next'" (click)="selectedWeek = 'next'; loadSlots()">Semana siguiente</button>
+      </div>
+      <span class="text-muted">Semana del {{ weekStart | date:'dd/MM/yyyy' }}</span>
     </div>
-    <span class="text-muted ms-3">Semana del {{ weekStart | date:'dd/MM/yyyy' }}</span>
 
     <div class="card mb-4">
       <div class="card-body">
         <h3 class="h5 card-title">Crear franja</h3>
         <form (ngSubmit)="onCreate()">
           <div class="row g-3">
-            <div class="col-md-3">
+            <div class="col-12 col-md-3">
               <label class="form-label">Día (1=Lunes ... 5=Viernes):</label>
-              <input type="number" class="form-control" [(ngModel)]="newSlot.day_of_week" name="day" min="1" max="5" required />
+              <input type="number" class="form-control w-100" [(ngModel)]="newSlot.day_of_week" name="day" min="1" max="5" required />
             </div>
-            <div class="col-md-3">
+            <div class="col-12 col-md-3">
               <label class="form-label">Hora inicio (07:00-21:00 en punto):</label>
-              <input type="time" class="form-control" [(ngModel)]="newSlot.start_time" name="time" step="3600" required />
+              <input type="time" class="form-control w-100" [(ngModel)]="newSlot.start_time" name="time" step="3600" required />
             </div>
-            <div class="col-md-3">
+            <div class="col-12 col-md-3">
               <label class="form-label">Capacidad:</label>
-              <input type="number" class="form-control" [(ngModel)]="newSlot.capacity" name="capacity" min="1" max="50" />
+              <input type="number" class="form-control w-100" [(ngModel)]="newSlot.capacity" name="capacity" min="1" max="50" />
             </div>
-            <div class="col-md-3">
+            <div class="col-12 col-md-3">
               <label class="form-label">Entrenador:</label>
-              <select class="form-control" [(ngModel)]="newSlot.trainer" name="trainer">
+              <select class="form-control w-100" [(ngModel)]="newSlot.trainer" name="trainer">
                 <option [ngValue]="null">Sin asignar</option>
                 <option value="Carlos">Carlos</option>
                 <option value="Alicia">Alicia</option>
               </select>
             </div>
           </div>
-          <button type="submit" class="btn btn-primary mt-3">Crear</button>
+          <button type="submit" class="btn btn-primary mt-3 w-100 w-sm-auto">Crear</button>
         </form>
       </div>
     </div>
@@ -62,6 +64,7 @@ declare const bootstrap: any;
 
     <h3 class="h5 mt-4">Franjas (semana {{ weekStart | date:'dd/MM/yyyy' }})</h3>
     <p *ngIf="loading" class="text-muted">Cargando...</p>
+    <div class="table-responsive">
     <table *ngIf="!loading" class="table table-striped">
       <thead>
         <tr>
@@ -86,44 +89,45 @@ declare const bootstrap: any;
             <span *ngIf="!slot.trainer" class="text-muted">Sin asignar</span>
           </td>
           <td>
-            <div class="btn-group btn-group-sm" role="group">
-              <button class="btn btn-outline-primary" (click)="onEdit(slot)">Editar</button>
-              <button class="btn btn-outline-danger" (click)="openConfirm('delete', slot)">Eliminar</button>
-              <button *ngIf="slot.status === 'abierta'" class="btn btn-outline-warning" (click)="openConfirm('block', slot)">Bloquear</button>
-              <button *ngIf="slot.status === 'bloqueada'" class="btn btn-outline-success" (click)="onUnblock(slot)">Desbloquear</button>
+            <div class="d-flex flex-column flex-sm-row gap-1" role="group">
+              <button class="btn btn-sm btn-outline-primary" (click)="onEdit(slot)">Editar</button>
+              <button class="btn btn-sm btn-outline-danger" (click)="openConfirm('delete', slot)">Eliminar</button>
+              <button *ngIf="slot.status === 'abierta'" class="btn btn-sm btn-outline-warning" (click)="openConfirm('block', slot)">Bloquear</button>
+              <button *ngIf="slot.status === 'bloqueada'" class="btn btn-sm btn-outline-success" (click)="onUnblock(slot)">Desbloquear</button>
             </div>
           </td>
         </tr>
       </tbody>
     </table>
+    </div>
 
     <div *ngIf="editingSlot" class="card mt-4">
       <div class="card-body">
         <h3 class="h5 card-title">Editar franja #{{ editingSlot.id }}</h3>
         <div class="row g-3">
-          <div class="col-md-3">
+          <div class="col-12 col-md-3">
             <label class="form-label">Día:</label>
-            <input type="number" class="form-control" [(ngModel)]="editingSlot.day_of_week" min="1" max="5" />
+            <input type="number" class="form-control w-100" [(ngModel)]="editingSlot.day_of_week" min="1" max="5" />
           </div>
-          <div class="col-md-3">
+          <div class="col-12 col-md-3">
             <label class="form-label">Hora:</label>
-            <input type="time" class="form-control" [(ngModel)]="editingSlot.start_time" step="3600" />
+            <input type="time" class="form-control w-100" [(ngModel)]="editingSlot.start_time" step="3600" />
           </div>
-          <div class="col-md-3">
+          <div class="col-12 col-md-3">
             <label class="form-label">Capacidad:</label>
-            <input type="number" class="form-control" [(ngModel)]="editingSlot.capacity" min="1" max="50" />
+            <input type="number" class="form-control w-100" [(ngModel)]="editingSlot.capacity" min="1" max="50" />
           </div>
-          <div class="col-md-3">
+          <div class="col-12 col-md-3">
             <label class="form-label">Entrenador:</label>
-            <select class="form-control" [(ngModel)]="editingSlot.trainer">
+            <select class="form-control w-100" [(ngModel)]="editingSlot.trainer">
               <option [ngValue]="null">Sin asignar</option>
               <option value="Carlos">Carlos</option>
               <option value="Alicia">Alicia</option>
             </select>
           </div>
         </div>
-        <div class="mt-3">
-          <button class="btn btn-primary me-2" (click)="onUpdate()">Guardar</button>
+        <div class="mt-3 d-flex flex-column flex-sm-row gap-2">
+          <button class="btn btn-primary" (click)="onUpdate()">Guardar</button>
           <button class="btn btn-secondary" (click)="editingSlot = null">Cancelar</button>
         </div>
       </div>

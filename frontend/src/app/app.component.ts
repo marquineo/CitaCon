@@ -8,20 +8,25 @@ import { AuthService } from './core/services/auth.service';
   standalone: true,
   imports: [RouterOutlet, RouterLink, CommonModule],
   template: `
-    <nav class="navbar navbar-expand navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
       <div class="container">
         <a class="navbar-brand" routerLink="/">CitaCon</a>
-        <div class="navbar-nav">
-          <ng-container *ngIf="isLoggedIn()">
-            <a class="nav-link" routerLink="/">Franjas</a>
-            <a class="nav-link" routerLink="/my-reservations">Mis reservas</a>
-            <a *ngIf="isAdmin()" class="nav-link" routerLink="/admin/slots">Gestión de Franjas</a>
-            <a *ngIf="isAdmin()" class="nav-link" routerLink="/admin/quota">Admin Quota</a>
-            <button class="nav-link btn btn-link" (click)="onLogout()">Cerrar sesión</button>
-          </ng-container>
-          <ng-container *ngIf="!isLoggedIn()">
-            <a class="nav-link" routerLink="/login">Login</a>
-          </ng-container>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <div class="navbar-nav">
+            <ng-container *ngIf="isLoggedIn()">
+              <a class="nav-link" routerLink="/">Franjas</a>
+              <a class="nav-link" routerLink="/my-reservations">Mis reservas</a>
+              <a *ngIf="isAdmin()" class="nav-link" routerLink="/admin/slots">Gestión de Franjas</a>
+              <a *ngIf="isAdmin()" class="nav-link" routerLink="/admin/quota">Admin Quota</a>
+              <button class="nav-link btn btn-link text-start" (click)="onLogout()">Cerrar sesión</button>
+            </ng-container>
+            <ng-container *ngIf="!isLoggedIn()">
+              <a class="nav-link" routerLink="/login">Login</a>
+            </ng-container>
+          </div>
         </div>
       </div>
     </nav>

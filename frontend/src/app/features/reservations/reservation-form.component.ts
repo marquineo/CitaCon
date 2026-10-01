@@ -26,22 +26,24 @@ import { SlotService, Slot } from '../../core/services/slot.service';
     <p *ngIf="!quota && !quotaError" class="text-muted">Cargando cupo...</p>
     <div *ngIf="quotaError" class="alert alert-danger">{{ quotaError }}</div>
 
-    <div class="mb-3">
-      <label class="form-label">Semana (lunes ISO):</label>
-      <input type="date" class="form-control" [(ngModel)]="weekStart" (change)="onWeekChange()" />
+    <div class="row g-3">
+      <div class="col-12 col-md-6">
+        <label class="form-label">Semana (lunes ISO):</label>
+        <input type="date" class="form-control w-100" [(ngModel)]="weekStart" (change)="onWeekChange()" />
+      </div>
+
+      <div class="col-12 col-md-6">
+        <label class="form-label">Franja:</label>
+        <select class="form-control w-100" [(ngModel)]="selectedSlotId">
+          <option [ngValue]="null">-- selecciona --</option>
+          <option *ngFor="let slot of slots" [ngValue]="slot.id">
+            Día {{ slot.day_of_week }} {{ slot.start_time }} — {{ slot.occupation ?? 0 }}/{{ slot.capacity }} ({{ slot.status }})
+          </option>
+        </select>
+      </div>
     </div>
 
-    <div class="mb-3">
-      <label class="form-label">Franja:</label>
-      <select class="form-control" [(ngModel)]="selectedSlotId">
-        <option [ngValue]="null">-- selecciona --</option>
-        <option *ngFor="let slot of slots" [ngValue]="slot.id">
-          Día {{ slot.day_of_week }} {{ slot.start_time }} — {{ slot.occupation ?? 0 }}/{{ slot.capacity }} ({{ slot.status }})
-        </option>
-      </select>
-    </div>
-
-    <button class="btn btn-primary" (click)="onSubmit()" [disabled]="!selectedSlotId">Reservar</button>
+    <button class="btn btn-primary mt-3 w-100 w-sm-auto" (click)="onSubmit()" [disabled]="!selectedSlotId">Reservar</button>
 
     <div *ngIf="successMessage" class="alert alert-success mt-3">{{ successMessage }}</div>
     <div *ngIf="errorMessage" class="alert alert-danger mt-3">{{ errorMessage }}</div>

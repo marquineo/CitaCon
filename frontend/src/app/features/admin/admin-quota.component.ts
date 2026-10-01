@@ -33,39 +33,41 @@ interface Client {
     <h2 class="h4 mb-2">Gestión de cupos semanales (Admin)</h2>
     <p class="text-muted">Solo para administradores — el backend valida con UserPolicy.</p>
 
-    <div class="btn-group mb-3" role="group">
-      <button type="button" class="btn btn-outline-primary" [class.active]="selectedWeek === 'current'" (click)="selectedWeek = 'current'; onWeekChange()">Esta semana</button>
-      <button type="button" class="btn btn-outline-primary" [class.active]="selectedWeek === 'next'" (click)="selectedWeek = 'next'; onWeekChange()">Semana siguiente</button>
+    <div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center gap-2 mb-3">
+      <div class="btn-group flex-wrap" role="group">
+        <button type="button" class="btn btn-outline-primary" [class.active]="selectedWeek === 'current'" (click)="selectedWeek = 'current'; onWeekChange()">Esta semana</button>
+        <button type="button" class="btn btn-outline-primary" [class.active]="selectedWeek === 'next'" (click)="selectedWeek = 'next'; onWeekChange()">Semana siguiente</button>
+      </div>
+      <span class="text-muted">Semana del {{ weekStart | date:'dd/MM/yyyy' }}</span>
     </div>
-    <span class="text-muted ms-3">Semana del {{ weekStart | date:'dd/MM/yyyy' }}</span>
 
     <div class="card mb-4">
       <div class="card-body">
         <h3 class="h5 card-title">Crear cliente</h3>
         <form (ngSubmit)="onCreateClient()">
           <div class="row g-3">
-            <div class="col-md-4">
+            <div class="col-12 col-md-4">
               <label class="form-label">Nombre:</label>
-              <input type="text" class="form-control" [(ngModel)]="newClient.name" name="newName" required />
+              <input type="text" class="form-control w-100" [(ngModel)]="newClient.name" name="newName" required />
             </div>
-            <div class="col-md-4">
+            <div class="col-12 col-md-4">
               <label class="form-label">Email:</label>
-              <input type="email" class="form-control" [(ngModel)]="newClient.email" name="newEmail" required />
+              <input type="email" class="form-control w-100" [(ngModel)]="newClient.email" name="newEmail" required />
             </div>
-            <div class="col-md-4">
+            <div class="col-12 col-md-4">
               <label class="form-label">Teléfono (opcional):</label>
-              <input type="text" class="form-control" [(ngModel)]="newClient.phone" name="newPhone" maxlength="20" placeholder="600123456" />
+              <input type="text" class="form-control w-100" [(ngModel)]="newClient.phone" name="newPhone" maxlength="20" placeholder="600123456" />
             </div>
-            <div class="col-md-3">
+            <div class="col-12 col-md-3">
               <label class="form-label">Contraseña:</label>
-              <input type="password" class="form-control" [(ngModel)]="newClient.password" name="newPassword" required />
+              <input type="password" class="form-control w-100" [(ngModel)]="newClient.password" name="newPassword" required />
             </div>
-            <div class="col-md-3">
+            <div class="col-12 col-md-3">
               <label class="form-label">Horas semanales:</label>
-              <input type="number" class="form-control" [(ngModel)]="newClient.weekly_hours" name="newHours" min="0" max="50" required />
+              <input type="number" class="form-control w-100" [(ngModel)]="newClient.weekly_hours" name="newHours" min="0" max="50" required />
             </div>
           </div>
-          <button type="submit" class="btn btn-primary mt-3" [disabled]="creating">{{ creating ? 'Creando...' : 'Crear cliente' }}</button>
+          <button type="submit" class="btn btn-primary mt-3 w-100 w-sm-auto" [disabled]="creating">{{ creating ? 'Creando...' : 'Crear cliente' }}</button>
         </form>
         <div *ngIf="createError" class="alert alert-danger mt-2">{{ createError }}</div>
         <div *ngIf="createSuccess" class="alert alert-success mt-2">{{ createSuccess }}</div>
@@ -75,6 +77,7 @@ interface Client {
     <p *ngIf="loading" class="text-muted">Cargando clientes...</p>
     <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
 
+    <div class="table-responsive">
     <table *ngIf="!loading && clients.length > 0" class="table table-striped">
       <thead>
         <tr>
@@ -97,7 +100,7 @@ interface Client {
           <td><span class="badge bg-secondary">{{ getUsedForClient(client.id) }}</span></td>
           <td><span class="badge" [ngClass]="getRemainingForClient(client) < 0 ? 'bg-danger' : 'bg-success'">{{ getRemainingForClient(client) }}</span></td>
           <td>
-            <input type="number" class="form-control form-control-sm" [(ngModel)]="client._editValue" [attr.min]="0" [attr.max]="50" style="width: 80px;" />
+            <input type="number" class="form-control form-control-sm w-100" [(ngModel)]="client._editValue" [attr.min]="0" [attr.max]="50" style="min-width: 70px;" />
             <div *ngIf="client._error" class="alert alert-danger mt-1 p-1 small">{{ client._error }}</div>
           </td>
           <td>
@@ -108,6 +111,7 @@ interface Client {
         </tr>
       </tbody>
     </table>
+    </div>
     <p *ngIf="!loading && clients.length === 0" class="text-muted">No hay clientes.</p>
   `,
   styles: []

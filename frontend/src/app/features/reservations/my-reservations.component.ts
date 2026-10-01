@@ -18,11 +18,13 @@ declare const bootstrap: any;
   template: `
     <h2 class="h4 mb-3">Mis reservas</h2>
 
-    <div class="btn-group mb-3" role="group">
-      <button type="button" class="btn btn-outline-primary" [class.active]="selectedWeek === 'current'" (click)="selectedWeek = 'current'; loadAll()">Esta semana</button>
-      <button type="button" class="btn btn-outline-primary" [class.active]="selectedWeek === 'next'" (click)="selectedWeek = 'next'; loadAll()">Semana siguiente</button>
+    <div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center gap-2 mb-3">
+      <div class="btn-group flex-wrap" role="group">
+        <button type="button" class="btn btn-outline-primary" [class.active]="selectedWeek === 'current'" (click)="selectedWeek = 'current'; loadAll()">Esta semana</button>
+        <button type="button" class="btn btn-outline-primary" [class.active]="selectedWeek === 'next'" (click)="selectedWeek = 'next'; loadAll()">Semana siguiente</button>
+      </div>
+      <span class="text-muted">Semana del {{ weekStart | date:'dd/MM/yyyy' }}</span>
     </div>
-    <span class="text-muted ms-3">Semana del {{ weekStart | date:'dd/MM/yyyy' }}</span>
 
     <div *ngIf="quota" class="alert alert-info">
       Cupo: {{ quota.used }}/{{ quota.assigned }} usados,
@@ -33,6 +35,7 @@ declare const bootstrap: any;
     <p *ngIf="loading" class="text-muted">Cargando reservas...</p>
     <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
 
+    <div class="table-responsive">
     <table *ngIf="!loading && reservations.length > 0" class="table">
       <thead>
         <tr>
@@ -56,6 +59,7 @@ declare const bootstrap: any;
         </tr>
       </tbody>
     </table>
+    </div>
     <p *ngIf="!loading && reservations.length === 0" class="text-muted">No tienes reservas.</p>
 
     <div *ngIf="successMessage" class="alert alert-success mt-2">{{ successMessage }}</div>
