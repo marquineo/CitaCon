@@ -60,4 +60,39 @@ class ReservationContractTest extends TestCase
         $response = $this->postJson('/api/reservations', ['slot_id' => $slotFull->id, 'week_start' => $week, 'user_id' => $clienteTarget->id]);
         $response->assertStatus(201);
     }
+
+    public function test_no_se_puede_crear_reserva_para_un_administrador(): void
+    {
+        $week = $this->monday();
+        $slot = Slot::create(['day_of_week' => 1, 'start_time' => '08:00:00', 'capacity' => 4, 'status' => 'abierta']);
+        $admin = User::create(['name' => 'admin', 'email' => 'admin-self@test.test', 'password' => Hash::make('password'), 'role' => 'administrador', 'weekly_hours' => 5]);
+
+        Sanctum::actingAs($admin);
+
+        // Sin user_id: objetivo es el propio admin
+        $r1 = $this->postJson('/api/reservations', ['slot_id' => $slot->id, 'week_start' => $week]);
+        $r1->assertStatus(422);
+        $payload1 = json_encode($r1->json(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $this->assertStringContainsString('Los administradores no pueden tener reservas propias.', $payload1);
+
+        // Especificando su propio id explícitamente
+        $r2 = $this->postJson('/api/reservations', ['slot_id' => $slot->id, 'week_start' => $week, 'user_id' => $admin->id]);
+        $r2->assertStatus(422);
+        $payload2 = json_encode($r2->json(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $this->assertStringContainsString('Los administradores no pueden tener reservas propias.', $payload2);
+    }
+
+    public function test_admin_no_puede_crear_reserva_para_otro_administrador(): void
+    {
+        $week = $this->monday();
+        $slot = Slot::create(['day_of_week' => 2, 'start_time' => '09:00:00', 'capacity' => 4, 'status' => 'abierta']);
+        $admin1 = User::create(['name' => 'admin1', 'email' => 'admin1@test.test', 'password' => Hash::make('password'), 'role' => 'administrador', 'weekly_hours' => 5]);
+        $admin2 = User::create(['name' => 'admin2', 'email' => 'admin2@test.test', 'password' => Hash::make('password'), 'role' => 'administrador', 'weekly_hours' => 5]);
+
+        Sanctum::actingAs($admin1);
+        $response = $this->postJson('/api/reservations', ['slot_id' => $slot->id, 'week_start' => $week, 'user_id' => $admin2->id]);
+        $response->assertStatus(422);
+        $payload = json_encode($response->json(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $this->assertStringContainsString('Los administradores no pueden tener reservas propias.', $payload);
+    }
 }

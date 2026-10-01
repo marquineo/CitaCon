@@ -35,6 +35,13 @@ class ReservationService
         // Si es cliente e intenta enviar user_id, se ignora (ya está en $effectiveUserId = auth id)
         $targetUser = User::findOrFail($effectiveUserId);
 
+        // Los administradores no entrenan: nunca pueden ser el usuario objetivo de una reserva
+        if ($targetUser->role === 'administrador') {
+            throw ValidationException::withMessages([
+                'user_id' => ['Los administradores no pueden tener reservas propias.'],
+            ]);
+        }
+
         return DB::transaction(function () use ($slotId, $weekStart, $authUser, $targetUser, $isAdmin) {
             // Bloqueo pesimista sobre la fila de la franja (plantilla) para serializar aforo
             $slot = Slot::where('id', $slotId)->lockForUpdate()->firstOrFail();
