@@ -37,7 +37,7 @@ class UserController extends Controller
     {
         $this->authorize('viewAny', User::class);
         // Solo clientes, ordenados por email, con campos mínimos para UI
-        $users = User::where('role', 'cliente')->orderBy('email')->get(['id', 'name', 'email', 'weekly_hours', 'role']);
+        $users = User::where('role', 'cliente')->orderBy('email')->get(['id', 'name', 'email', 'phone', 'weekly_hours', 'role']);
         return response()->json(['data' => $users]);
     }
 
@@ -101,6 +101,7 @@ class UserController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'phone' => ['nullable', 'string', 'max:20'],
             'weekly_hours' => ['required', 'integer', 'min:0', 'max:50'],
             'password' => ['required', 'string', 'min:8'],
         ]);
@@ -108,6 +109,7 @@ class UserController extends Controller
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
+            'phone' => $validated['phone'] ?? null,
             'password' => \Illuminate\Support\Facades\Hash::make($validated['password']),
             'role' => 'cliente',
             'weekly_hours' => $validated['weekly_hours'],

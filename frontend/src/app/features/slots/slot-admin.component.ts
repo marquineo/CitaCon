@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SlotService, Slot } from '../../core/services/slot.service';
 import { DayOfWeekPipe } from '../../core/pipes/day-of-week.pipe';
+import { thisMonday as getThisMonday, nextMonday as getNextMonday } from '../../core/utils/week.util';
 
 declare const bootstrap: any;
 
@@ -19,22 +20,36 @@ declare const bootstrap: any;
     <h2 class="h4 mb-2">Gestión de franjas (Admin)</h2>
     <p class="text-muted">Solo visible para administradores — el sistema valida los permisos.</p>
 
+    <div class="btn-group mb-3" role="group">
+      <button type="button" class="btn btn-outline-primary" [class.active]="selectedWeek === 'current'" (click)="selectedWeek = 'current'; loadSlots()">Esta semana</button>
+      <button type="button" class="btn btn-outline-primary" [class.active]="selectedWeek === 'next'" (click)="selectedWeek = 'next'; loadSlots()">Semana siguiente</button>
+    </div>
+    <span class="text-muted ms-3">Semana del {{ weekStart | date:'dd/MM/yyyy' }}</span>
+
     <div class="card mb-4">
       <div class="card-body">
         <h3 class="h5 card-title">Crear franja</h3>
         <form (ngSubmit)="onCreate()">
           <div class="row g-3">
-            <div class="col-md-4">
+            <div class="col-md-3">
               <label class="form-label">Día (1=Lunes ... 5=Viernes):</label>
               <input type="number" class="form-control" [(ngModel)]="newSlot.day_of_week" name="day" min="1" max="5" required />
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
               <label class="form-label">Hora inicio (07:00-21:00 en punto):</label>
               <input type="time" class="form-control" [(ngModel)]="newSlot.start_time" name="time" step="3600" required />
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
               <label class="form-label">Capacidad:</label>
               <input type="number" class="form-control" [(ngModel)]="newSlot.capacity" name="capacity" min="1" max="50" />
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Entrenador:</label>
+              <select class="form-control" [(ngModel)]="newSlot.trainer" name="trainer">
+                <option [ngValue]="null">Sin asignar</option>
+                <option value="Carlos">Carlos</option>
+                <option value="Alicia">Alicia</option>
+              </select>
             </div>
           </div>
           <button type="submit" class="btn btn-primary mt-3">Crear</button>
@@ -55,6 +70,7 @@ declare const bootstrap: any;
           <th>Capacidad</th>
           <th>Ocupación</th>
           <th>Estado</th>
+          <th>Entrenador</th>
           <th>Acciones</th>
         </tr>
       </thead>
@@ -65,6 +81,10 @@ declare const bootstrap: any;
           <td>{{ slot.capacity }}</td>
           <td>{{ slot.occupation ?? 0 }}/{{ slot.capacity }}</td>
           <td><span class="badge" [ngClass]="slot.status === 'abierta' ? 'bg-success' : 'bg-danger'">{{ slot.status }}</span></td>
+          <td>
+            <span *ngIf="slot.trainer" class="badge bg-info">{{ slot.trainer }}</span>
+            <span *ngIf="!slot.trainer" class="text-muted">Sin asignar</span>
+          </td>
           <td>
             <div class="btn-group btn-group-sm" role="group">
               <button class="btn btn-outline-primary" (click)="onEdit(slot)">Editar</button>
@@ -81,17 +101,25 @@ declare const bootstrap: any;
       <div class="card-body">
         <h3 class="h5 card-title">Editar franja #{{ editingSlot.id }}</h3>
         <div class="row g-3">
-          <div class="col-md-4">
+          <div class="col-md-3">
             <label class="form-label">Día:</label>
             <input type="number" class="form-control" [(ngModel)]="editingSlot.day_of_week" min="1" max="5" />
           </div>
-          <div class="col-md-4">
+          <div class="col-md-3">
             <label class="form-label">Hora:</label>
             <input type="time" class="form-control" [(ngModel)]="editingSlot.start_time" step="3600" />
           </div>
-          <div class="col-md-4">
+          <div class="col-md-3">
             <label class="form-label">Capacidad:</label>
             <input type="number" class="form-control" [(ngModel)]="editingSlot.capacity" min="1" max="50" />
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Entrenador:</label>
+            <select class="form-control" [(ngModel)]="editingSlot.trainer">
+              <option [ngValue]="null">Sin asignar</option>
+              <option value="Carlos">Carlos</option>
+              <option value="Alicia">Alicia</option>
+            </select>
           </div>
         </div>
         <div class="mt-3">
@@ -139,9 +167,12 @@ export class SlotAdminComponent implements OnInit {
   error: string | null = null;
   success: string | null = null;
 
-  weekStart: string = this.getNextMonday();
+  selectedWeek: 'current' | 'next' = 'current';
+  get weekStart(): string {
+    return this.selectedWeek === 'current' ? getThisMonday() : getNextMonday();
+  }
 
-  newSlot: Partial<Slot> = { day_of_week: 1, start_time: '08:00:00', capacity: 4 };
+  newSlot: Partial<Slot> = { day_of_week: 1, start_time: '08:00:00', capacity: 4, trainer: null };
   editingSlot: Slot | null = null;
 
   pendingAction: 'block' | 'delete' | null = null;
@@ -214,10 +245,12 @@ export class SlotAdminComponent implements OnInit {
   onCreate(): void {
     this.error = null;
     this.success = null;
-    // Normalizar hora a HH:00:00 si viene como HH:MM
-    const payload = { ...this.newSlot };
+    const payload: any = { ...this.newSlot };
     if (payload.start_time && /^\d{2}:\d{2}$/.test(payload.start_time)) {
       payload.start_time += ':00';
+    }
+    if (payload.trainer === null || payload.trainer === '') {
+      payload.trainer = null;
     }
     this.slotService.create(payload).subscribe({
       next: () => {
@@ -225,7 +258,6 @@ export class SlotAdminComponent implements OnInit {
         this.loadSlots();
       },
       error: (err) => {
-        // Mostrar mensaje exacto del backend (422 duplicado, etc.), no inventar
         this.error = err?.error?.message ?? JSON.stringify(err?.error?.errors ?? err.error);
       }
     });
@@ -237,7 +269,9 @@ export class SlotAdminComponent implements OnInit {
 
   onUpdate(): void {
     if (!this.editingSlot) return;
-    this.slotService.update(this.editingSlot.id, this.editingSlot).subscribe({
+    const payload: any = { ...this.editingSlot };
+    if (payload.trainer === '') payload.trainer = null;
+    this.slotService.update(this.editingSlot.id, payload).subscribe({
       next: () => {
         this.success = 'Franja actualizada';
         this.editingSlot = null;
@@ -248,13 +282,10 @@ export class SlotAdminComponent implements OnInit {
   }
 
   onDelete(_slot: Slot): void {
-    // Deprecated: usar openConfirm('delete', slot) + confirmAction()
-    // Mantenido por compatibilidad si se llama programáticamente
     this.openConfirm('delete', _slot);
   }
 
   onBlock(_slot: Slot): void {
-    // Deprecated: usar openConfirm('block', slot) + confirmAction()
     this.openConfirm('block', _slot);
   }
 
@@ -266,14 +297,5 @@ export class SlotAdminComponent implements OnInit {
       },
       error: (err) => this.error = err?.error?.message ?? 'Error al desbloquear'
     });
-  }
-
-  private getNextMonday(): string {
-    const now = new Date();
-    const day = now.getDay();
-    const diffToMonday = day === 0 ? 1 : 1 - day;
-    const monday = new Date(now);
-    monday.setDate(now.getDate() + diffToMonday + 7);
-    return monday.toISOString().slice(0, 10);
   }
 }

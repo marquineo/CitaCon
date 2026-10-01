@@ -185,4 +185,43 @@ class AdminUsersCrudTest extends TestCase
         $resp = $this->deleteJson('/api/users/99999');
         $resp->assertStatus(404);
     }
+
+    public function test_admin_puede_crear_cliente_con_telefono(): void
+    {
+        $admin = $this->admin();
+        Sanctum::actingAs($admin);
+
+        $response = $this->postJson('/api/users', [
+            'name' => 'Con Telefono',
+            'email' => 'conphone@test.test',
+            'weekly_hours' => 3,
+            'password' => 'password123',
+            'phone' => '600123456',
+        ]);
+
+        $response->assertStatus(201);
+        $response->assertJsonPath('data.phone', '600123456');
+        $this->assertDatabaseHas('users', ['email' => 'conphone@test.test', 'phone' => '600123456']);
+    }
+
+    public function test_crear_cliente_sin_telefono_es_valido(): void
+    {
+        $admin = $this->admin();
+        Sanctum::actingAs($admin);
+
+        $response = $this->postJson('/api/users', [
+            'name' => 'Sin Telefono',
+            'email' => 'sinphone@test.test',
+            'weekly_hours' => 2,
+            'password' => 'password123',
+        ]);
+
+        $response->assertStatus(201);
+        $data = $response->json('data');
+        $this->assertArrayHasKey('phone', $data, 'Respuesta debe incluir phone aunque sea null');
+        $this->assertNull($data['phone']);
+        $this->assertDatabaseHas('users', ['email' => 'sinphone@test.test']);
+        $user = \App\Models\User::where('email', 'sinphone@test.test')->first();
+        $this->assertNull($user->phone);
+    }
 }

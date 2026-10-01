@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReservationService, Reservation, Quota } from '../../core/services/reservation.service';
 import { DayOfWeekPipe } from '../../core/pipes/day-of-week.pipe';
+import { thisMonday as getThisMonday, nextMonday as getNextMonday } from '../../core/utils/week.util';
 
 declare const bootstrap: any;
 
@@ -94,7 +95,7 @@ export class MyReservationsComponent implements OnInit {
   selectedWeek: 'current' | 'next' = 'current';
 
   get weekStart(): string {
-    return this.selectedWeek === 'current' ? this.thisMonday() : this.nextMonday();
+    return this.selectedWeek === 'current' ? getThisMonday() : getNextMonday();
   }
 
   pendingReservation: Reservation | null = null;
@@ -175,21 +176,5 @@ export class MyReservationsComponent implements OnInit {
   onCancel(reservation: Reservation): void {
     // Compatibilidad: ahora el flujo pasa por openCancelConfirm -> confirmCancel
     this.openCancelConfirm(reservation);
-  }
-
-  private thisMonday(): string {
-    const now = new Date();
-    const day = now.getDay(); // 0 dom, 1 lun
-    const diffToMonday = day === 0 ? -6 : 1 - day;
-    const monday = new Date(now);
-    monday.setDate(now.getDate() + diffToMonday);
-    return monday.toISOString().slice(0, 10);
-  }
-
-  private nextMonday(): string {
-    const thisMon = this.thisMonday();
-    const d = new Date(thisMon);
-    d.setDate(d.getDate() + 7);
-    return d.toISOString().slice(0, 10);
   }
 }

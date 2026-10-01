@@ -9,6 +9,7 @@ export interface Slot {
   start_time: string;
   capacity: number;
   status: 'abierta' | 'bloqueada';
+  trainer?: string | null;
   occupation?: number;
   is_past?: boolean;
 }
